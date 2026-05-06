@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seller Registration | SportsBazaar</title>
+<link rel="shortcut icon" href="../img_logo/cropped_circle_image.png" type="image/x-icon">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
@@ -328,19 +329,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
   </div>
 
   <!-- RIGHT: PURE ANIMATED NIGHT SKY — NO TEXT, NO BORDER -->
-  <div class="sky-col">
-    <canvas id="skyCanvas"></canvas>
-    <div class="aurora"></div>
-    <div class="nebula"></div>
-    <div class="nebula2"></div>
-    <div class="saturn"><div class="sb"></div><div class="sr"></div></div>
-    <div class="moon"></div>
-    <div class="shoot" style="top:12%;left:25%;animation:shoot 1.9s 1.5s infinite linear"></div>
-    <div class="shoot" style="top:22%;left:58%;animation:shoot 1.6s 4.8s infinite linear"></div>
-    <div class="shoot" style="top:8%;left:72%;animation:shoot 2.1s 8.2s infinite linear"></div>
-    <div class="shoot" style="top:35%;left:40%;animation:shoot 1.4s 12s infinite linear"></div>
-  </div>
-
+<div>
+  <img src="../img_logo/sellerlogo.jpg" alt="seller logo" style="width:100%;height:100%;object-fit:cover; background: #00000074">
+</div>
 </div>
 
 <div class="toast-c" id="toastContainer"></div>

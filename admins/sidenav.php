@@ -40,12 +40,13 @@ $rejected  = count(array_filter($all_rows, fn($r) => $r['status'] === 'rejected'
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<hea>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel | BazaarNepal</title>
+    <title>Admin Panel | Playzo</title>
+    <link rel="icon" href="../logo/cropped_circle_image.png?v=2" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-    
     <style>
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
@@ -547,6 +548,9 @@ $rejected  = count(array_filter($all_rows, fn($r) => $r['status'] === 'rejected'
           <div class="nav-section">Users Management</div>
         <a href="manage_users.php" class="nav-item">
             <span class="ni">👥</span> Block/unblock users
+        </a>
+         <a href="user_collection.php" class="nav-item">
+            <span class="ni">👥</span> User Collection 
         </a>
 
           <div class="nav-section">Payments & Transactions</div>

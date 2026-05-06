@@ -17,15 +17,38 @@ if(!$data){
     exit;
 }
 
-$extraImages = !empty($data['images']) ? explode(",", $data['images']) : [];
+// Helper: resolve image path (same as index.php)
+function getItemImagePath($img) {
+    if (empty($img)) {
+        return 'https://placehold.co/600x500?text=No+Image';
+    }
+    if (preg_match('/^https?:\/\//i', $img)) {
+        return $img;
+    }
+    $img = ltrim($img, '/');
+    if (strpos($img, '../') === 0) {
+        return $img;
+    }
+    return '../' . $img;
+}
 
-/* ---- VIEWS ---- */
+// Process extra images with correct paths
+$extraImagesRaw = !empty($data['images']) ? explode(",", $data['images']) : [];
+$extraImages = [];
+foreach ($extraImagesRaw as $img) {
+    $img = trim($img);
+    if (!empty($img)) {
+        $extraImages[] = getItemImagePath($img);
+    }
+}
+
+// ---- VIEWS ----
 if(!isset($_SESSION['viewed_item'][$id])){
     $_SESSION['viewed_item'][$id] = true;
     $conn->query("UPDATE sport_items SET views = views + 1 WHERE id = $id");
 }
 
-/* ---- LIKES ---- */
+// ---- LIKES ----
 if(isset($_GET['like'])){
     $conn->query("INSERT INTO item_likes (item_id) VALUES ($id)");
     header("Location: item_details.php?id=".$id);
@@ -36,23 +59,24 @@ $likeCount = 0;
 $lk = $conn->query("SELECT COUNT(*) as total FROM item_likes WHERE item_id=$id");
 if($lk) $likeCount = $lk->fetch_assoc()['total'];
 
-/* ---- COMMENTS ---- */
+// ---- COMMENTS ----
 if(isset($_POST['comment'])){
     $c = $conn->real_escape_string($_POST['comment']);
     if($c != ""){
         $conn->query("INSERT INTO item_comments (item_id, comment) VALUES ($id,'$c')");
+        header("Location: item_details.php?id=".$id);
+        exit;
     }
 }
-
 $comments = $conn->query("SELECT * FROM item_comments WHERE item_id=$id ORDER BY id DESC");
 
-/* ---- ADD TO CART ---- */
+// ---- ADD TO CART ----
 if(isset($_POST['add_to_cart'])){
     $_SESSION['cart']['item_'.$id] = [
         "id"    => $data['id'],
         "name"  => $data['title'],
         "price" => $data['price'],
-        "image" => $data['image'],
+        "image" => getItemImagePath($data['image']),  // store resolved path
         "type"  => "item",
         "qty"   => 1
     ];
@@ -65,14 +89,14 @@ if(isset($_POST['buy_now'])){
         "id"    => $data['id'],
         "name"  => $data['title'],
         "price" => $data['price'],
-        "image" => $data['image'],
+        "image" => getItemImagePath($data['image']),
         "type"  => "item",
         "qty"   => 1
     ];
     header("Location: checkout.php"); exit;
 }
 
-/* ---- TOP PICKS (other sport items) ---- */
+// ---- TOP PICKS (other sport items) ----
 $top_products = $conn->query("SELECT * FROM sport_items WHERE is_top = 1 AND id != $id ORDER BY id DESC LIMIT 8");
 $top_rows = [];
 if($top_products) while($tr = $top_products->fetch_assoc()) $top_rows[] = $tr;
@@ -81,6 +105,9 @@ $avg = round($data['rating'] ?? 0);
 $disc = $data['discount'] ?? 0;
 $orig_price = $data['price'];
 $final_price = $disc > 0 ? round($orig_price - ($orig_price * $disc / 100)) : $orig_price;
+
+// Main image resolved path
+$mainImage = getItemImagePath($data['image']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -91,6 +118,13 @@ $final_price = $disc > 0 ? round($orig_price - ($orig_price * $disc / 100)) : $o
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+/* ... (keep all existing CSS exactly as provided) ... */
+/* The CSS remains unchanged – paste your original styles here */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
+/* ... (rest of the CSS) ... */
+
+
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
 
@@ -637,6 +671,19 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
   .tp-grid{justify-content:center;}
   .comment-section,.top-picks-section{padding:0 14px;}
 }
+
+
+@media(max-width:640px){
+  .product-wrap{padding:0 12px;}
+  .breadcrumb{padding:14px 16px;}
+  .product-title{font-size:22px;}
+  .price-main{font-size:26px;}
+  .main-img-wrap img{height:300px;}
+  .side-zoom{display:none !important;}
+  .tp-card{width:90%;max-width:280px;}
+  .tp-grid{justify-content:center;}
+  .comment-section,.top-picks-section{padding:0 14px;}
+}
 </style>
 </head>
 <body>
@@ -655,9 +702,7 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
 
   <!-- LEFT: IMAGES -->
   <div class="img-section">
-
     <div class="main-img-outer">
-
       <div class="main-img-wrap" id="mainImgWrap">
         <?php if(!empty($data['discount']) && $data['discount'] > 0): ?>
           <div class="img-discount"><?php echo $data['discount']; ?>% OFF</div>
@@ -667,27 +712,24 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
         <?php elseif(!empty($data['sell']) && $data['sell']=='Yes'): ?>
           <div class="img-sell">🔥 TRENDING</div>
         <?php endif; ?>
-        <img id="mainImg" src="<?php echo htmlspecialchars($data['image']); ?>"
+        <img id="mainImg" src="<?php echo $mainImage; ?>"
              alt="<?php echo htmlspecialchars($data['title']); ?>">
       </div>
-
-      <!-- SIDE ZOOM PANEL -->
       <div class="side-zoom" id="sideZoom">
-        <img id="sideZoomImg" src="<?php echo htmlspecialchars($data['image']); ?>" alt="zoom">
+        <img id="sideZoomImg" src="<?php echo $mainImage; ?>" alt="zoom">
         <div class="side-zoom-label"><i class="fa fa-search-plus"></i> Zoomed View</div>
       </div>
-
     </div>
 
     <!-- THUMBNAILS -->
     <div class="thumbs">
       <div class="thumb-wrap">
-        <img src="<?php echo htmlspecialchars($data['image']); ?>" class="active" onclick="changeImg(this)">
+        <img src="<?php echo $mainImage; ?>" class="active" onclick="changeImg(this)">
         <div class="zoom-popup">
-          <img src="<?php echo htmlspecialchars($data['image']); ?>">
+          <img src="<?php echo $mainImage; ?>">
         </div>
       </div>
-      <?php foreach($extraImages as $img): $img = trim($img); if(empty($img)) continue; ?>
+      <?php foreach($extraImages as $img): ?>
       <div class="thumb-wrap">
         <img src="<?php echo htmlspecialchars($img); ?>" onclick="changeImg(this)">
         <div class="zoom-popup">
@@ -696,23 +738,17 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
       </div>
       <?php endforeach; ?>
     </div>
-
   </div>
 
-  <!-- RIGHT: INFO -->
+  <!-- RIGHT: INFO (unchanged) -->
   <div class="info-section">
-
     <h1 class="product-title"><?php echo htmlspecialchars($data['title']); ?></h1>
-
-    <!-- META BADGES -->
     <div class="product-meta">
       <span class="meta-badge"><i class="fa fa-eye"></i> <?php echo number_format($data['views'] ?? 0); ?> views</span>
       <?php if(!empty($data['brand'])): ?>
         <span class="meta-badge"><i class="fa fa-tag"></i> <?php echo htmlspecialchars($data['brand']); ?></span>
       <?php endif; ?>
     </div>
-
-    <!-- SPORT + ITEM TYPE -->
     <div class="sport-info-row">
       <?php
       $sport_icons = [
@@ -732,27 +768,15 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
       $sport = $data['sport_type'] ?? 'Other';
       $ic = $sport_icons[$sport] ?? 'fa-layer-group';
       ?>
-      <span class="sport-badge">
-        <i class="fa <?php echo $ic; ?>"></i>
-        <?php echo htmlspecialchars($sport); ?>
-      </span>
+      <span class="sport-badge"><i class="fa <?php echo $ic; ?>"></i> <?php echo htmlspecialchars($sport); ?></span>
       <?php if(!empty($data['item_type'])): ?>
-      <span class="type-badge">
-        <i class="fa fa-box"></i>
-        <?php echo htmlspecialchars($data['item_type']); ?>
-      </span>
+      <span class="type-badge"><i class="fa fa-box"></i> <?php echo htmlspecialchars($data['item_type']); ?></span>
       <?php endif; ?>
     </div>
-
-    <!-- STARS -->
     <div class="stars">
-      <?php for($i=1;$i<=5;$i++) echo $i<=$avg
-        ? '<i class="fa fa-star"></i>'
-        : '<i class="fa fa-star" style="color:#e2e8f0"></i>'; ?>
+      <?php for($i=1;$i<=5;$i++) echo $i<=$avg ? '<i class="fa fa-star"></i>' : '<i class="fa fa-star" style="color:#e2e8f0"></i>'; ?>
       <span><?php echo $avg; ?>.0 rating</span>
     </div>
-
-    <!-- PRICE -->
     <div class="price-row">
       <span class="price-main">Rs. <?php echo number_format($final_price); ?></span>
       <?php if($disc > 0): ?>
@@ -760,13 +784,9 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
         <span class="price-save">Save <?php echo $disc; ?>%</span>
       <?php endif; ?>
     </div>
-
-    <!-- DESCRIPTION -->
     <?php if(!empty($data['description'])): ?>
     <div class="desc"><?php echo nl2br(htmlspecialchars($data['description'])); ?></div>
     <?php endif; ?>
-
-    <!-- SPECS TABLE (optional fields) -->
     <?php
     $specs = [];
     if(!empty($data['sport_type']))  $specs['Sport']       = $data['sport_type'];
@@ -781,112 +801,67 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
     <div class="specs-box">
       <div class="specs-title"><i class="fa fa-list-check"></i> Product Specifications</div>
       <?php foreach($specs as $k => $v): ?>
-      <div class="specs-row">
-        <div class="specs-key"><?php echo $k; ?></div>
-        <div class="specs-val"><?php echo htmlspecialchars($v); ?></div>
-      </div>
+      <div class="specs-row"><div class="specs-key"><?php echo $k; ?></div><div class="specs-val"><?php echo htmlspecialchars($v); ?></div></div>
       <?php endforeach; ?>
     </div>
     <?php endif; ?>
-
-    <!-- FORM -->
     <form method="POST" id="itemForm">
-
-      <!-- LIKE + SHARE -->
       <div class="action-row">
-        <a href="?id=<?php echo $id; ?>&like=1" class="like-btn">
-          <i class="fa fa-heart"></i> <?php echo $likeCount; ?> Likes
-        </a>
-
+        <a href="?id=<?php echo $id; ?>&like=1" class="like-btn"><i class="fa fa-heart"></i> <?php echo $likeCount; ?> Likes</a>
         <div class="share-wrap" id="shareWrap">
-          <div class="share-btn" onclick="toggleShare()">
-            <i class="fa fa-share-alt"></i> Share
-          </div>
+          <div class="share-btn" onclick="toggleShare()"><i class="fa fa-share-alt"></i> Share</div>
           <div class="share-dropdown" id="shareDropdown">
             <div class="share-title">Share via</div>
             <div class="share-icons">
-              <a class="share-link facebook"
-                 href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode('http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']); ?>"
-                 target="_blank">
-                <i class="fab fa-facebook-f"></i> Facebook
-              </a>
-              <a class="share-link instagram" href="https://www.instagram.com/" target="_blank">
-                <i class="fab fa-instagram"></i> Instagram
-              </a>
-              <a class="share-link twitter"
-                 href="https://twitter.com/intent/tweet?url=<?php echo urlencode('http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']); ?>&text=<?php echo urlencode($data['title']); ?>"
-                 target="_blank">
-                <i class="fab fa-x-twitter"></i> X (Twitter)
-              </a>
-              <a class="share-link copy" href="#" onclick="copyLink(event)">
-                <i class="fa fa-link"></i> Copy Link
-              </a>
+              <a class="share-link facebook" href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode('http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']); ?>" target="_blank"><i class="fab fa-facebook-f"></i> Facebook</a>
+              <a class="share-link instagram" href="https://www.instagram.com/" target="_blank"><i class="fab fa-instagram"></i> Instagram</a>
+              <a class="share-link twitter" href="https://twitter.com/intent/tweet?url=<?php echo urlencode('http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']); ?>&text=<?php echo urlencode($data['title']); ?>" target="_blank"><i class="fab fa-x-twitter"></i> X (Twitter)</a>
+              <a class="share-link copy" href="#" onclick="copyLink(event)"><i class="fa fa-link"></i> Copy Link</a>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- CTA BUTTONS -->
       <div class="btn-group" style="margin-top:16px;">
-        <button class="btn cart-btn" type="button" onclick="submitForm('add_to_cart')">
-          <i class="fa fa-cart-plus"></i> Add to Cart
-        </button>
-        <button class="btn buy-btn" type="button" onclick="submitForm('buy_now')">
-          <i class="fa fa-bolt"></i> Buy Now
-        </button>
+        <button class="btn cart-btn" type="button" onclick="submitForm('add_to_cart')"><i class="fa fa-cart-plus"></i> Add to Cart</button>
+        <button class="btn buy-btn" type="button" onclick="submitForm('buy_now')"><i class="fa fa-bolt"></i> Buy Now</button>
       </div>
     </form>
-
-    <!-- GUARANTEE -->
     <div class="guarantee">
       <div class="guar-item"><i class="fa fa-shield-alt"></i> Authentic Quality</div>
       <div class="guar-item"><i class="fa fa-undo"></i> Easy Returns</div>
       <div class="guar-item"><i class="fa fa-truck"></i> Fast Delivery</div>
     </div>
-
-  </div><!-- end info-section -->
-</div><!-- end product-wrap -->
+  </div>
+</div>
 
 <!-- COMMENTS -->
 <div class="comment-section">
   <div class="comment-card">
-
     <h3><i class="fa fa-comments" style="color:#818cf8;"></i> Customer Reviews</h3>
-
     <form method="POST">
-      <textarea class="comment-input" name="comment"
-        placeholder="Share your experience about this product..."></textarea>
-      <button class="post-btn" type="submit">
-        <i class="fa fa-paper-plane"></i> Post Comment
-      </button>
+      <textarea class="comment-input" name="comment" placeholder="Share your experience about this product..."></textarea>
+      <button class="post-btn" type="submit"><i class="fa fa-paper-plane"></i> Post Comment</button>
     </form>
-
     <div class="comment-list">
       <?php
       $letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       if($comments) while($row = $comments->fetch_assoc()):
         $letter = $letters[rand(0,25)];
       ?>
-      <div class="comment-item">
-        <div class="comment-avatar"><?php echo $letter; ?></div>
-        <div><?php echo htmlspecialchars($row['comment']); ?></div>
-      </div>
+      <div class="comment-item"><div class="comment-avatar"><?php echo $letter; ?></div><div><?php echo htmlspecialchars($row['comment']); ?></div></div>
       <?php endwhile; ?>
     </div>
-
   </div>
 </div>
 
-<!-- TOP PICKS -->
+<!-- TOP PICKS (fixed image paths) -->
 <?php if(count($top_rows) > 0): ?>
 <div class="top-picks-section">
-
   <div class="top-strip-hd">
     <h2><i class="fa fa-star"></i> Top Picks</h2>
     <div class="ts-line"></div>
     <a href="../publics/index.php">View All <i class="fa fa-arrow-right" style="font-size:10px;"></i></a>
   </div>
-
   <div class="tp-grid" id="tp-grid">
     <?php foreach($top_rows as $tp):
       $tp_sport    = htmlspecialchars($tp['sport_type'] ?? 'Other');
@@ -896,44 +871,29 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
       $tp_orig     = $tp_has_disc ? round($tp['price'] / (1 - $tp['discount']/100)) : 0;
       $tp_avg      = round($tp['rating'] ?? 0);
       $tp_ic       = $sport_icons[$tp_sport] ?? 'fa-layer-group';
+      $tp_img_src  = getItemImagePath($tp['image']); // ← fixed image path
     ?>
     <div class="tp-card">
-
       <?php if(!empty($tp['is_top']) && $tp['is_top'] == 1): ?>
-      <div class="top-pick-banner">
-        <i class="fa fa-crown" style="font-size:10px;"></i> TOP PICK
-      </div>
+      <div class="top-pick-banner"><i class="fa fa-crown"></i> TOP PICK</div>
       <?php endif; ?>
-
       <div class="tp-cimg">
-        <?php if($tp_has_disc): ?>
-          <div class="tp-cbadge tp-cb-disc"><?php echo $tp['discount']; ?>% OFF</div>
-        <?php endif; ?>
-        <?php if($tp_is_new): ?>
-          <div class="tp-cbadge tp-cb-new">NEW</div>
-        <?php elseif($tp_is_sell): ?>
-          <div class="tp-cbadge tp-cb-sell">TRENDING</div>
-        <?php elseif(!$tp_has_disc): ?>
-          <div class="tp-cbadge tp-cb-hot">HOT</div>
-        <?php endif; ?>
+        <?php if($tp_has_disc): ?><div class="tp-cbadge tp-cb-disc"><?php echo $tp['discount']; ?>% OFF</div><?php endif; ?>
+        <?php if($tp_is_new): ?><div class="tp-cbadge tp-cb-new">NEW</div>
+        <?php elseif($tp_is_sell): ?><div class="tp-cbadge tp-cb-sell">TRENDING</div>
+        <?php elseif(!$tp_has_disc): ?><div class="tp-cbadge tp-cb-hot">HOT</div><?php endif; ?>
         <a href="item_details.php?id=<?php echo $tp['id']; ?>">
-          <img src="<?php echo htmlspecialchars($tp['image']); ?>"
-               alt="<?php echo htmlspecialchars($tp['title']); ?>">
+          <img src="<?php echo $tp_img_src; ?>" alt="<?php echo htmlspecialchars($tp['title']); ?>">
         </a>
-        <a class="tp-qview" href="item_details.php?id=<?php echo $tp['id']; ?>">
-          <i class="fa fa-eye"></i> Quick View
-        </a>
+        <a class="tp-qview" href="item_details.php?id=<?php echo $tp['id']; ?>"><i class="fa fa-eye"></i> Quick View</a>
       </div>
-
       <div class="tp-cbody">
         <div class="tp-ctitle"><?php echo htmlspecialchars($tp['title']); ?></div>
         <div class="tp-cclub">SportGhar • <?php echo htmlspecialchars($tp['item_type'] ?? 'Standard'); ?></div>
         <div class="tp-cmeta">
           <span class="tp-ctype"><?php echo htmlspecialchars($tp['item_type'] ?? 'Standard'); ?></span>
           <span class="tp-cprice">
-            <?php if($tp_has_disc): ?>
-              <span class="tp-cprice-old">Rs.<?php echo number_format($tp_orig); ?></span>
-            <?php endif; ?>
+            <?php if($tp_has_disc): ?><span class="tp-cprice-old">Rs.<?php echo number_format($tp_orig); ?></span><?php endif; ?>
             Rs.<?php echo number_format($tp['price']); ?>
           </span>
         </div>
@@ -942,44 +902,37 @@ body{font-family:'Outfit',sans-serif;background: #eef2ff;color:#1e293b;}
           <span class="tp-csport"><i class="fa <?php echo $tp_ic; ?>"></i> <?php echo $tp_sport; ?></span>
           <span class="tp-cstars"><?php for($i=1;$i<=5;$i++) echo $i<=$tp_avg?'★':'☆'; ?></span>
         </div>
-        <a class="tp-cadd" href="cart.php?item_id=<?php echo $tp['id']; ?>&type=item">
-          <i class="fa fa-cart-plus"></i> Add to Cart
-        </a>
+        <a class="tp-cadd" href="cart.php?item_id=<?php echo $tp['id']; ?>&type=item"><i class="fa fa-cart-plus"></i> Add to Cart</a>
       </div>
     </div>
     <?php endforeach; ?>
   </div>
-
 </div>
 <?php endif; ?>
 
-<!-- ==================== SCRIPTS ==================== -->
 <script>
-/* ── MAIN IMAGE ZOOM (side panel) ── */
-const mainWrap    = document.getElementById('mainImgWrap');
-const mainImg     = document.getElementById('mainImg');
+/* ... (keep all JavaScript exactly as provided) ... */
+const mainWrap = document.getElementById('mainImgWrap');
+const mainImg = document.getElementById('mainImg');
 const sideZoomImg = document.getElementById('sideZoomImg');
-
-mainWrap.addEventListener('mousemove', function(e){
-  const rect   = mainWrap.getBoundingClientRect();
-  const xRatio = (e.clientX - rect.left) / rect.width;
-  const yRatio = (e.clientY - rect.top)  / rect.height;
-  const scale  = 2.5;
-  const xPct   = Math.max(0, Math.min(100, xRatio * 100));
-  const yPct   = Math.max(0, Math.min(100, yRatio * 100));
-  sideZoomImg.style.transformOrigin = xPct + '% ' + yPct + '%';
-  sideZoomImg.style.transform       = 'scale(' + scale + ')';
-});
-
-/* ── THUMBNAIL CLICK ── */
+if(mainWrap) {
+  mainWrap.addEventListener('mousemove', function(e){
+    const rect = mainWrap.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / rect.width;
+    const yRatio = (e.clientY - rect.top) / rect.height;
+    const scale = 2.5;
+    const xPct = Math.max(0, Math.min(100, xRatio * 100));
+    const yPct = Math.max(0, Math.min(100, yRatio * 100));
+    sideZoomImg.style.transformOrigin = xPct + '% ' + yPct + '%';
+    sideZoomImg.style.transform = 'scale(' + scale + ')';
+  });
+}
 function changeImg(el){
-  mainImg.src     = el.src;
+  mainImg.src = el.src;
   sideZoomImg.src = el.src;
   document.querySelectorAll('.thumbs img').forEach(i => i.classList.remove('active'));
   el.classList.add('active');
 }
-
-/* ── SHARE DROPDOWN ── */
 function toggleShare(){
   document.getElementById('shareWrap').classList.toggle('open');
 }
@@ -1000,19 +953,15 @@ function copyLink(e){
     btn.style.color = '';
   }, 2000);
 }
-
-/* ── FORM SUBMIT (no size needed for items) ── */
 function submitForm(action){
-  const form  = document.getElementById('itemForm');
+  const form = document.getElementById('itemForm');
   const input = document.createElement('input');
-  input.type  = 'hidden';
-  input.name  = action;
+  input.type = 'hidden';
+  input.name = action;
   input.value = '1';
   form.appendChild(input);
   form.submit();
 }
-
-/* ── TOP PICKS CARD ANIMATION ── */
 window.addEventListener('load', function(){
   document.querySelectorAll('.tp-card').forEach(function(card, i){
     setTimeout(function(){ card.classList.add('visible'); }, i * 80);
@@ -1023,3 +972,7 @@ window.addEventListener('load', function(){
 </body>
 </html>
 <?php include "../includes/footer.php"; ?>
+
+
+
+

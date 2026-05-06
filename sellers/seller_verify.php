@@ -160,13 +160,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
             min-height: 100vh;
         }
 
+        /* Left hero image */
         .hero-image {
-            flex: 1.1;
-            background-image: url('https://images.pexels.com/photos/998641/pexels-photo-998641.jpeg?auto=compress&cs=tinysrgb&w=1600');
+            flex: 1;
+            width: 57%;
+            background-image: url('../img_logo/lefts.jpg');
             background-size: cover;
             background-position: center 30%;
             background-repeat: no-repeat;
             position: relative;
+            transition: background-image 0.4s ease-in-out;
         }
 
         @media (min-width: 1400px) {
@@ -183,23 +186,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.25);
             pointer-events: none;
         }
 
+        /* Right form panel: fixed width 43% as requested */
         .form-panel {
-            flex: 1;
-            background:  #b94502;
+            flex: 0 0 43%;
+            width: 43%;
+            background: #b94502;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 2rem 1.8rem;
             box-shadow: -8px 0 30px rgba(53, 240, 11, 0.98);
             border-left: 1px solid rgba(10, 21, 233, 0.9);
+            position: relative;
+            z-index: 2;
         }
 
         .form-container {
-            max-width: 500px;
+            max-width: 700px;
             width: 100%;
             margin: 0 auto;
             animation: fadeSlideUp 0.5s ease-out;
@@ -466,19 +473,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
             color: #facc15;
         }
 
+        /* Responsive: switch to column on smaller screens, widths reset */
         @media (max-width: 780px) {
             .split-layout {
                 flex-direction: column;
             }
             .hero-image {
                 min-height: 260px;
-                flex: none;
                 width: 100%;
+                flex: none;
             }
             .form-panel {
+                flex: 0 0 auto;
+                width: 100%;
                 padding: 2rem 1.2rem;
                 border-left: none;
                 border-top: 1px solid rgba(56, 189, 248, 0.2);
+                box-shadow: none;
             }
             .otp-box {
                 width: 48px;
@@ -521,7 +532,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
 <body>
 
 <div class="split-layout">
-    <div class="hero-image" aria-label="Night sky with sparkling stars"></div>
+    <!-- Left side - dynamic image changes when OTP step appears -->
+    <div class="hero-image" id="heroImage" aria-label="Verification backdrop"></div>
     
     <div class="form-panel">
         <div class="form-container">
@@ -607,6 +619,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
     const messageBox = document.getElementById('messageBox');
     const displayEmailSpan = document.getElementById('displayEmail');
     const timerDisplay = document.getElementById('timerDisplay');
+    const heroImageDiv = document.getElementById('heroImage');
 
     const otpInputs = [
         document.getElementById('otp1'),
@@ -619,6 +632,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
 
     let expiryTimer = null;
     let currentEmail = '';
+
+    // Image URLs for dynamic left side switching
+    const DEFAULT_LEFT_IMAGE = "url('../img_logo/lefts.jpg')";
+    const OTP_STEP_IMAGE = "url('../img_logo/otp.jpg')";  // new verification/ lock themed image
+    
+    // For high resolution extra fallback (for OTP step)
+    function setHeroImage(isOtpStep) {
+        if (isOtpStep) {
+            heroImageDiv.style.backgroundImage = OTP_STEP_IMAGE;
+            heroImageDiv.style.backgroundSize = "cover";
+            heroImageDiv.style.backgroundPosition = "center 30%";
+        } else {
+            // Revert to default (original) background image
+            heroImageDiv.style.backgroundImage = DEFAULT_LEFT_IMAGE;
+            heroImageDiv.style.backgroundSize = "cover";
+            heroImageDiv.style.backgroundPosition = "center 30%";
+            // Ensure large screen unspalsh style also if needed for default but our inline overrides, but we keep consistent
+            if (window.innerWidth >= 1400 && !isOtpStep) {
+                // optional, but we stick with default image from css? Better not to commit complex mix
+            }
+        }
+    }
 
     function showMessage(msg, type) {
         messageBox.innerText = msg;
@@ -659,7 +694,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
                 if (input.value.length === 1 && idx < otpInputs.length - 1) {
                     otpInputs[idx + 1].focus();
                 }
-                // Auto-submit trigger after last input gets a digit
                 if (idx === otpInputs.length - 1 && input.value.length === 1) {
                     handleAutoSubmit();
                 }
@@ -733,12 +767,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
                 currentEmail = email;
                 
                 if (!isResend) {
+                    // First time OTP step -> change left image to new verification image
+                    setHeroImage(true);
                     stepEmailDiv.classList.add('hidden');
                     stepOtpDiv.classList.remove('hidden');
                     displayEmailSpan.innerText = email;
                     clearOtpBoxes();
                     startOtpTimer();
                 } else {
+                    // resend -> keep OTP step visible & image stays same (already changed if was OTP)
                     clearOtpBoxes();
                     stopTimer();
                     startOtpTimer();
@@ -783,6 +820,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
             if (data.status === 'success') {
                 showMessage(data.message, 'success');
                 stopTimer();
+                // keep image as is / redirect
                 setTimeout(() => {
                     window.location.href = 'seller_register.php';
                 }, 1300);
@@ -836,7 +874,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
                     if (input && digits[idx]) input.value = digits[idx];
                 });
                 if (otpInputs[otpInputs.length - 1]) otpInputs[otpInputs.length - 1].focus();
-                // Auto-submit after paste
                 handleAutoSubmit();
             } else {
                 showMessage('Paste a valid 6-digit OTP', 'error');
@@ -847,6 +884,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_action'])) {
     setupOtpNavigation();
     otpInputs.forEach(inp => { if(inp) inp.setAttribute('autocomplete', 'off'); });
     messageBox.classList.add('hidden');
+    
+    // Ensure default hero image is set (initial state)
+    setHeroImage(false);
 </script>
 </body>
 </html>

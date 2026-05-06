@@ -74,7 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seller Login | SportsBazaar</title>
+<title>Seller Login | Playzo</title>
+<link rel="shortcut icon" href="../img_logo/cropped_circle_image.png" type="image/x-icon">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
@@ -98,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   .main{flex:1;display:flex;overflow:hidden;min-height:0}
 
   /* FORM COLUMN */
-  .form-col{width:50%;flex-shrink:0;background: #fff;display:flex;flex-direction:column;overflow:hidden}
+  .form-col{width:40%;flex-shrink:0;background: #fff;display:flex;flex-direction:column;overflow:hidden}
   .form-hdr{background: #b94502 ;;padding:1rem 1.6rem;display:flex;align-items:center;gap:.8rem;flex-shrink:0}
   .fh-icon{width:40px;height:40px;background:#C72A1F;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;flex-shrink:0}
   .fh-text h2{font-family:'Sora',sans-serif;font-weight:800;font-size:.95rem;color:#fff;letter-spacing:-.2px}
@@ -132,21 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   .info-card i{color:#C72A1F;font-size:.8rem;margin-top:2px;flex-shrink:0}
   .info-card p{font-size:.72rem;color:#64748b;line-height:1.5}
 
-  /* SKY PANEL — no border, no text */
-  .sky-col{flex:1;position:relative;overflow:hidden;background:#030617}
-  #skyCanvas{position:absolute;inset:0;width:100%;height:100%}
-  .aurora{position:absolute;bottom:25%;left:0;right:0;height:160px;background:linear-gradient(180deg,transparent,rgba(56,178,120,.07) 40%,rgba(100,220,180,.11) 60%,transparent);animation:aur 9s ease-in-out infinite alternate;pointer-events:none;z-index:2}
-  @keyframes aur{0%{opacity:.5;transform:scaleX(1)}100%{opacity:1;transform:scaleX(1.08)}}
-  .nebula{position:absolute;top:30%;left:15%;width:200px;height:130px;background:radial-gradient(ellipse,rgba(120,80,200,.1),transparent 70%);border-radius:50%;pointer-events:none;z-index:1;animation:neb 14s ease-in-out infinite alternate}
-  .nebula2{position:absolute;top:55%;right:12%;width:140px;height:90px;background:radial-gradient(ellipse,rgba(60,120,220,.08),transparent 70%);border-radius:50%;pointer-events:none;z-index:1;animation:neb 10s 3s ease-in-out infinite alternate}
-  @keyframes neb{0%{opacity:.3;transform:scale(1)}100%{opacity:.7;transform:scale(1.15)}}
-  .saturn{position:absolute;top:8%;right:8%;z-index:3}
-  .sb{width:65px;height:65px;background:radial-gradient(circle at 35% 35%,#f5d47a,#c49b2c);border-radius:50%}
-  .sr{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotateX(72deg);width:110px;height:110px;border-radius:50%;border:7px solid rgba(210,175,70,.35)}
-  .moon{position:absolute;top:20%;left:8%;width:44px;height:44px;background:radial-gradient(circle at 35% 30%,#e8e0c8,#b8b0a0);border-radius:50%;box-shadow:inset -5px -3px 0 rgba(0,0,0,.18);z-index:3}
-  .shoot{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:0}
-  @keyframes shoot{0%{opacity:1;transform:translate(0,0) scale(1.2)}100%{opacity:0;transform:translate(110px,55px) scale(0)}}
-
   /* TOAST */
   .toast-c{position:fixed;bottom:1.2rem;right:1.2rem;z-index:9000;display:flex;flex-direction:column;gap:.35rem}
   .toast{background:#fff;border-radius:.75rem;padding:.55rem .9rem;box-shadow:0 8px 20px rgba(0,0,0,.12);border-left:3px solid;font-size:.74rem;font-weight:500;animation:ti .22s ease;display:flex;align-items:center;gap:.45rem}
@@ -166,13 +152,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .form-body{padding:1.5rem 1.2rem}
   }
 
-   .img-logo{
+  .img-logo{
     width:190px;
     height:50px;
     object-fit:contain;
     padding:4px;
     border-radius:8px;
-
   }
 </style>
 </head>
@@ -243,18 +228,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <!-- RIGHT: PURE ANIMATED NIGHT SKY — NO TEXT, NO BORDER -->
-  <div class="sky-col">
-    <canvas id="skyCanvas"></canvas>
-    <div class="aurora"></div>
-    <div class="nebula"></div>
-    <div class="nebula2"></div>
-    <div class="saturn"><div class="sb"></div><div class="sr"></div></div>
-    <div class="moon"></div>
-    <div class="shoot" style="top:12%;left:25%;animation:shoot 1.9s 1.5s infinite linear"></div>
-    <div class="shoot" style="top:22%;left:58%;animation:shoot 1.6s 4.8s infinite linear"></div>
-    <div class="shoot" style="top:8%;left:72%;animation:shoot 2.1s 8.2s infinite linear"></div>
-    <div class="shoot" style="top:35%;left:40%;animation:shoot 1.4s 12s infinite linear"></div>
+  <!-- RIGHT: IMAGE (NO CANVAS) -->
+  <div>
+    <img src="../img_logo/selllllllllll.jpg" alt="sellers image" style="height:100%;object-fit:cover; width:100%">
   </div>
 
 </div>
@@ -262,105 +238,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="toast-c" id="toastContainer"></div>
 
 <script>
-  // Star canvas
-  const canvas = document.getElementById('skyCanvas');
-  const ctx = canvas.getContext('2d');
-  let stars = [];
-
-  function resize() {
-    canvas.width = canvas.offsetWidth || canvas.parentElement.offsetWidth || 700;
-    canvas.height = canvas.offsetHeight || canvas.parentElement.offsetHeight || 900;
-    initStars();
-  }
-
-  function initStars() {
-    stars = [];
-    const n = Math.floor((canvas.width * canvas.height) / 1800);
-    for (let i = 0; i < n; i++) {
-      stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        r: Math.random() * 1.9 + 0.25,
-        a: Math.random(),
-        da: (Math.random() * .007 + .002) * (Math.random() < .5 ? 1 : -1),
-        col: Math.random() < .14 ? '#ffe8a3' : Math.random() < .1 ? '#b3d4ff' : '#ffffff'
-      });
-    }
-  }
-
-  function drawStars() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const bg = ctx.createRadialGradient(canvas.width * .28, canvas.height * .38, 0, canvas.width * .5, canvas.height * .5, canvas.width * .9);
-    bg.addColorStop(0, '#0a0f2a'); bg.addColorStop(1, '#030617');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const mw = ctx.createLinearGradient(0, canvas.height * .15, canvas.width, canvas.height * .65);
-    mw.addColorStop(0, 'transparent'); mw.addColorStop(.5, 'rgba(160,140,255,0.03)'); mw.addColorStop(1, 'transparent');
-    ctx.fillStyle = mw; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    stars.forEach(s => {
-      s.a += s.da; if (s.a > 1 || s.a < 0) s.da *= -1;
-      ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, s.a));
-      ctx.fillStyle = s.col; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-      if (s.r > 1.4) { ctx.globalAlpha = s.a * .18; ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 3.5, 0, Math.PI * 2); ctx.fill(); }
-      ctx.restore();
-    });
-    requestAnimationFrame(drawStars);
-  }
-
-  window.addEventListener('resize', resize);
-  setTimeout(() => { resize(); requestAnimationFrame(drawStars); }, 100);
-
-  // Input filters
+  // ----- INPUT FILTERS -----
   document.getElementById('pan_number').addEventListener('input', function () {
     this.value = this.value.replace(/\D/g, '').slice(0, 9);
   });
 
-  // Toast
+  // ----- TOAST FUNCTION -----
   function showToast(msg, type) {
-    const c = document.getElementById('toastContainer'), t = document.createElement('div');
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
     t.className = 'toast ' + (type === 's' ? 's' : 'e');
     t.innerHTML = '<i class="fas ' + (type === 's' ? 'fa-check-circle' : 'fa-exclamation-circle') + '"></i> ' + msg;
     c.appendChild(t);
-    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 4000);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transition = 'opacity .3s';
+      setTimeout(() => t.remove(), 300);
+    }, 4000);
   }
 
-  function se(id, m) { const e = document.getElementById(id); if (e) e.textContent = m; }
-  function ce(id) { const e = document.getElementById(id); if (e) e.textContent = ''; }
+  // ----- ERROR MESSAGE HELPERS -----
+  function setError(id, msg) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = msg;
+  }
+  function clearError(id) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  }
 
-  document.getElementById('full_name').addEventListener('input', () => ce('eFN'));
-  document.getElementById('pan_number').addEventListener('input', () => ce('ePAN'));
+  // Clear errors on input
+  document.getElementById('full_name').addEventListener('input', () => clearError('eFN'));
+  document.getElementById('pan_number').addEventListener('input', () => clearError('ePAN'));
 
+  // ----- FORM SUBMIT (AJAX) -----
   document.getElementById('loginForm').addEventListener('submit', async function (e) {
     e.preventDefault();
-    let ok = true;
 
-    const fn = document.getElementById('full_name').value.trim();
-    if (!fn) { se('eFN', 'Full name is required'); ok = false; } else ce('eFN');
-
+    let isValid = true;
+    const fullName = document.getElementById('full_name').value.trim();
     const pan = document.getElementById('pan_number').value.trim();
-    if (!pan || !/^[0-9]{9}$/.test(pan)) { se('ePAN', 'Valid 9-digit PAN required'); ok = false; } else ce('ePAN');
 
-    if (!ok) return;
+    if (!fullName) {
+      setError('eFN', 'Full name is required');
+      isValid = false;
+    } else {
+      clearError('eFN');
+    }
+
+    if (!pan || !/^[0-9]{9}$/.test(pan)) {
+      setError('ePAN', 'Valid 9-digit PAN required');
+      isValid = false;
+    } else {
+      clearError('ePAN');
+    }
+
+    if (!isValid) return;
 
     const btn = document.getElementById('loginBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in…';
 
     try {
-      const fd = new FormData(this);
-      const res = await fetch(window.location.href, { method: 'POST', body: fd });
-      const data = await res.json();
+      const formData = new FormData(this);
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
 
       if (data.success) {
         showToast(data.message || 'Login successful!', 's');
-        setTimeout(() => window.location.href = data.redirect, 1500);
+        setTimeout(() => {
+          window.location.href = data.redirect;
+        }, 1500);
       } else {
-        const msg = data.errors ? data.errors[0] : data.message;
-        showToast(msg, 'e');
+        const errorMsg = data.errors ? data.errors[0] : data.message;
+        showToast(errorMsg, 'e');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Sign In to Dashboard';
       }
     } catch (err) {
-      showToast('Network error', 'e');
+      showToast('Network error. Please try again.', 'e');
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Sign In to Dashboard';
     }

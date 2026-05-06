@@ -24,23 +24,20 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
     if(!$email || !$pass){
         $error = "Email ra password fill garnu parcha.";
     } else {
-        // Select is_blocked as well
         $res = $conn->query("SELECT id, name, email, password, role, is_blocked FROM users WHERE email='$email' LIMIT 1");
         if($res && $res->num_rows > 0){
             $user = $res->fetch_assoc();
             
-            // Check if user is blocked
             if($user['is_blocked'] == 1){
                 $error = "⚠️ Your account has been blocked by admin. Please contact support for more information.";
             } 
             elseif(password_verify($pass, $user['password'])){
-                // Store all necessary info in session, including is_blocked
                 $_SESSION['user'] = [
                     'id'         => $user['id'],
                     'name'       => $user['name'],
                     'email'      => $user['email'],
                     'role'       => $user['role'] ?? 'user',
-                    'is_blocked' => $user['is_blocked']   // 0 = active, 1 = blocked
+                    'is_blocked' => $user['is_blocked']
                 ];
                 $go = !empty($_POST['redirect']) ? urldecode($_POST['redirect']) : '../publics/index.php';
                 header("Location: " . $go);
@@ -58,10 +55,35 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login — JerseyGhar</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Login — PlayZo</title>
+<link rel="shortcut icon" href="../img_logo/cropped_circle_image.png" type="image/x-icon">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+
+<!-- Seo here -->
+ <meta name="description" content="PlayZo is Nepal’s complete online sports marketplace where you can buy jerseys, sports gear, fitness equipment, shoes, and accessories all in one place.">
+<meta name="keywords" content="PlayZo, sports shop Nepal, buy sports gear online, sports jerseys Nepal, fitness equipment Nepal, sports accessories, online sports store">
+<meta name="author" content="PlayZo">
+<meta name="robots" content="index, follow">
+
+<!-- Open Graph / Social Media SEO -->
+<meta property="og:title" content="PlayZo - All Sports Products in One Place">
+<meta property="og:description" content="Shop all sports gear, jerseys, fitness equipment, and accessories online at PlayZo Nepal.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.playzo.com.np">
+<meta property="og:image" content="https://www.playzo.com.np/logo.png">
+
+<!-- Twitter SEO -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PlayZo - All Sports Products in One Place">
+<meta name="twitter:description" content="Nepal’s one-stop online sports marketplace for all sports products.">
+<meta name="twitter:image" content="https://www.playzo.com.np/logo.png">
+
+<!-- Canonical URL -->
+<link rel="canonical" href="https://www.playzo.com.np">
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -82,31 +104,34 @@ body{
     overflow:hidden;
 }
 
-/* BRAND PANEL */
+/* LEFT PANEL — FULL BACKGROUND IMAGE + LOGO */
 .left-panel{
     flex:1;
+    position:relative;
     display:flex;
     flex-direction:column;
     justify-content:center;
     align-items:center;
-    padding:60px 48px;
-    position:relative;
+    padding:10px 48px;
     overflow:hidden;
+    background: url('../img_logo/logo6.jpg') no-repeat center center;
+    background-size: cover;
 }
-.deco-num{
+/* Dark overlay for readability */
+.left-panel::before{
+    content:'';
     position:absolute;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:clamp(200px,30vw,380px);
-    font-weight:900;
-    color:rgba(255,255,255,0.05);
-    line-height:1;
-    top:50%;left:50%;
-    transform:translate(-50%,-50%);
-    pointer-events:none;user-select:none;
-    letter-spacing:-10px;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(27, 25, 25, 0.36);
+    backdrop-filter:blur(2px);
+    z-index:1;
 }
 .brand{
-    position:relative;z-index:2;
+    position:relative;
+    z-index:2;
     text-align:center;
     animation:fadeUp 0.7s ease both;
     display:flex;
@@ -118,10 +143,16 @@ body{
     to{opacity:1;transform:translateY(0);}
 }
 
-/* JERSEY LOGO */
-.jersey-logo-wrap{
-    margin-bottom:18px;
-    filter:drop-shadow(0 8px 28px rgba(0,0,0,0.22));
+/* Logo image */
+.login-logo-img{
+    display:inline-block;
+    max-width:140px;
+    margin-bottom:20px;
+    filter:drop-shadow(0 8px 24px rgba(0,0,0,0.3));
+    transition:transform 0.25s ease;
+}
+.login-logo-img:hover{
+    transform:scale(1.02);
 }
 
 .brand-name{
@@ -129,6 +160,7 @@ body{
     font-size:52px;font-weight:900;
     color:#fff;letter-spacing:-1px;
     line-height:1;text-transform:uppercase;
+    text-shadow:0 2px 12px rgba(0,0,0,0.3);
 }
 .brand-name span{
     color:#fde68a;display:block;
@@ -137,8 +169,12 @@ body{
 }
 .brand-tagline{
     margin-top:18px;font-size:14.5px;
-    color:rgba(255,255,255,0.7);font-weight:500;
+    color:rgba(255,255,255,0.85);font-weight:500;
     max-width:280px;line-height:1.6;text-align:center;
+    background:rgba(0,0,0,0.3);
+    backdrop-filter:blur(4px);
+    padding:8px 16px;
+    border-radius:40px;
 }
 .feat-list{
     margin-top:34px;
@@ -150,12 +186,12 @@ body{
 }
 .feat-item{
     display:flex;align-items:center;gap:12px;
-    background:rgba(255,255,255,0.1);
-    border:1px solid rgba(255,255,255,0.18);
+    background:rgba(0,0,0,0.4);
+    backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,0.2);
     border-radius:14px;
     padding:12px 16px;
     animation:fadeUp 0.7s ease both;
-    backdrop-filter:blur(6px);
 }
 .feat-item:nth-child(1){animation-delay:.1s;}
 .feat-item:nth-child(2){animation-delay:.2s;}
@@ -163,16 +199,16 @@ body{
 .feat-icon{
     width:36px;height:36px;border-radius:10px;
     background:rgba(253,230,138,0.2);
-    border:1px solid rgba(253,230,138,0.3);
+    border:1px solid rgba(253,230,138,0.4);
     display:flex;align-items:center;justify-content:center;
     font-size:15px;color:#fde68a;flex-shrink:0;
 }
 .feat-text{font-size:13px;color:#fff;font-weight:600;line-height:1.35;}
-.feat-text small{display:block;color:rgba(255,255,255,0.55);font-weight:400;font-size:11.5px;}
+.feat-text small{display:block;color:rgba(255,255,255,0.7);font-weight:400;font-size:11.5px;}
 
-/* FORM PANEL */
+/* RIGHT PANEL — FORM */
 .right-panel{
-    width:460px;
+    width:560px;
     flex-shrink:0;
     background:var(--cream);
     display:flex;
@@ -319,27 +355,18 @@ body{
     .right-panel{width:100%;padding:36px 24px 52px;}
     .feat-list{flex-direction:row;flex-wrap:wrap;max-width:100%;}
     .feat-item{flex:1;min-width:180px;}
+    .login-logo-img{max-width:100px;}
+    .brand-name{font-size:40px;}
 }
 </style>
 </head>
 <body>
 
-<!-- BRAND PANEL -->
+<!-- LEFT PANEL: BACKGROUND IMAGE + LOGO + BRANDING -->
 <div class="left-panel">
-    <div class="deco-num">10</div>
     <div class="brand">
-        <div class="jersey-logo-wrap">
-            <svg width="120" height="120" viewBox="0 0 110 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 28 L8 50 L24 54 L24 95 L86 95 L86 54 L102 50 L90 28 L72 38 C68 22 42 22 38 38 Z" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" stroke-linejoin="round"/>
-                <path d="M38 38 Q42 48 55 48 Q68 48 72 38" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
-                <path d="M24 60 L86 60" stroke="rgba(253,230,138,0.3)" stroke-width="9"/>
-                <circle cx="16" cy="52" r="3" fill="rgba(253,230,138,0.5)"/>
-                <circle cx="94" cy="52" r="3" fill="rgba(253,230,138,0.5)"/>
-                <text x="55" y="85" font-family="'Barlow Condensed',sans-serif" font-size="24" font-weight="900" fill="rgba(255,255,255,0.95)" text-anchor="middle" letter-spacing="-1">10</text>
-            </svg>
-        </div>
-        <div class="brand-name">Jersey<span>GHAR</span></div>
-        <div class="brand-tagline">Nepal ko #1 Sports Jersey Store. Authentic jerseys, fast delivery, best prices.</div>
+        <!-- Logo image added -->
+        <img class="login-logo-img" src="../img_logo/playzo.w.png" alt="PlayZo Nepal Logo">
         <div class="feat-list">
             <div class="feat-item"><div class="feat-icon"><i class="fa fa-shield-alt"></i></div><div class="feat-text">100% Authentic<small>Original quality guaranteed</small></div></div>
             <div class="feat-item"><div class="feat-icon"><i class="fa fa-truck"></i></div><div class="feat-text">Fast Delivery<small>Kathmandu Valley same day</small></div></div>
@@ -348,14 +375,14 @@ body{
     </div>
 </div>
 
-<!-- FORM PANEL -->
+<!-- RIGHT PANEL: LOGIN FORM -->
 <div class="right-panel">
-    <a href="../publics/index.php" class="back-link"><i class="fa fa-arrow-left"></i> Store ma farkanus</a>
+    <a href="../publics/index.php" class="back-link"><i class="fa fa-arrow-left"></i> Back to Store</a>
 
     <div class="form-top">
         <div class="form-eyebrow">Welcome Back</div>
         <div class="form-title">Account <span>Login</span></div>
-        <div class="form-sub">Afno account ma sign in garnus orders hernu ra kina garnu!</div>
+        <div class="form-sub">Login to your account to view orders and shop faster!</div>
         <div class="trust-badges">
             <span class="badge"><i class="fa fa-lock"></i> Secure Login</span>
             <span class="badge"><i class="fa fa-star"></i> Nepal #1 Store</span>
@@ -383,7 +410,7 @@ body{
             <label>Email Address</label>
             <div class="input-wrap">
                 <i class="fa fa-envelope ico"></i>
-                <input type="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" placeholder="tapai@email.com" required>
+                <input type="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" placeholder="you@example.com" required>
             </div>
         </div>
 
@@ -397,15 +424,15 @@ body{
         </div>
 
         <div class="form-extras">
-            <label class="remember"><input type="checkbox" name="remember"> Malaai yaad rakhnus</label>
-            <a href="forgot_password.php" class="forgot">Password birsanu bhayo?</a>
+            <label class="remember"><input type="checkbox" name="remember"> Remember Me</label>
+            <a href="forgot_password.php" class="forgot">Forgot Password?</a>
         </div>
 
-        <button type="submit" class="btn-submit"><i class="fa fa-sign-in-alt"></i> Login Garnus</button>
+        <button type="submit" class="btn-submit"><i class="fa fa-sign-in-alt"></i> Login</button>
     </form>
 
-    <div class="divider">ya</div>
-    <div class="reg-link">Account chaina? &nbsp;<a href="signup.php<?php echo $redirect ? '?redirect='.urlencode($redirect) : ''; ?>">Aile Register Garnus →</a></div>
+    <div class="divider">or</div>
+    <div class="reg-link">Don't have an account? &nbsp;<a href="singup.php<?php echo $redirect ? '?redirect='.urlencode($redirect) : ''; ?>">Create Account →</a></div>
 </div>
 
 <script>

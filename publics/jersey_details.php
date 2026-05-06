@@ -107,6 +107,7 @@ $shop_display = !empty($data['shop_name']) ? htmlspecialchars($data['shop_name']
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo htmlspecialchars($data['title']); ?> — Jersey Ghar</title>
+<link rel="shortcut icon" href="../img_logo/cropped_circle_image.png" type="image/x-icon">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>

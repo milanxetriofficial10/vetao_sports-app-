@@ -49,10 +49,43 @@ if (isset($_SESSION['user']['id']) && isset($conn) && $conn instanceof mysqli) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>JerseyGhar Nepal</title>
+<title>PlayZo Nepal</title>
+<link rel="shortcut icon" href="../img_logo/cropped_circle_image.png" type="image/x-icon">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="shortcut icon" href="../img_logo/592152420_122294180810024667_2881232935832127715_n-modified.png" type="image/x-icon">
+
+
+<meta name="description" content="PlayZo is Nepal’s complete online sports marketplace where you can buy jerseys, shoes, fitness gear, sports equipment, and accessories in one trusted platform.">
+<meta name="keywords" content="PlayZo, sports shop Nepal, buy jerseys online Nepal, football jerseys Nepal, sports gear Nepal, fitness equipment Nepal, online sports store Nepal">
+<meta name="author" content="PlayZo">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<link rel="canonical" href="https://www.playzo.com.np">
+
+<!-- ================= OPEN GRAPH (Facebook / WhatsApp / Instagram / LinkedIn) ================= -->
+<meta property="og:title" content="PlayZo | Nepal’s #1 Sports Marketplace">
+<meta property="og:description" content="Shop jerseys, shoes, fitness gear, and all sports equipment in one place with PlayZo.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.playzo.com.np">
+<meta property="og:image" content="https://www.playzo.com.np/..img_logo/cropped_circle_image.png">
+<meta property="og:site_name" content="PlayZo">
+<meta property="og:locale" content="en_US">
+
+<!-- ================= TWITTER / X ================= -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PlayZo | Nepal Sports Marketplace">
+<meta name="twitter:description" content="Buy all sports gear, jerseys, shoes, and fitness equipment online in Nepal.">
+<meta name="twitter:image" content="https://www.playzo.com.np/../img_logo/cropped_circle_image.png">
+
+<!-- ================= MOBILE + UI BOOST ================= -->
+<meta name="theme-color" content="#0f172a">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- ================= OPTIONAL APP INFO ================= -->
+<meta name="application-name" content="PlayZo">
+<meta name="apple-mobile-web-app-title" content="PlayZo">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
 <style>
 :root{
   --h:66px;

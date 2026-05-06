@@ -85,6 +85,37 @@ if (!columnExists($conn, "cricket_bats", "created_at")) {
     $conn->query("ALTER TABLE cricket_bats ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
 }
 
+/* ================= BADMINTON ITEMS COLUMNS ================= */
+if (!columnExists($conn, "badminton_items", "created_at")) {
+    $conn->query("ALTER TABLE badminton_items ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+}
+if (!columnExists($conn, "badminton_items", "is_top")) {
+    $conn->query("ALTER TABLE badminton_items ADD COLUMN is_top TINYINT(1) DEFAULT 0");
+}
+if (!columnExists($conn, "badminton_items", "views")) {
+    $conn->query("ALTER TABLE badminton_items ADD COLUMN views INT DEFAULT 0");
+}
+if (!columnExists($conn, "badminton_items", "main_image")) {
+    $conn->query("ALTER TABLE badminton_items ADD COLUMN main_image VARCHAR(255) DEFAULT NULL");
+}
+
+/* ================= BOXING ITEMS COLUMNS ================= */
+if (!columnExists($conn, "boxing_items", "created_at")) {
+    $conn->query("ALTER TABLE boxing_items ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+}
+if (!columnExists($conn, "boxing_items", "is_top")) {
+    $conn->query("ALTER TABLE boxing_items ADD COLUMN is_top TINYINT(1) DEFAULT 0");
+}
+if (!columnExists($conn, "boxing_items", "views")) {
+    $conn->query("ALTER TABLE boxing_items ADD COLUMN views INT DEFAULT 0");
+}
+if (!columnExists($conn, "boxing_items", "main_image")) {
+    $conn->query("ALTER TABLE boxing_items ADD COLUMN main_image VARCHAR(255) DEFAULT NULL");
+}
+if (!columnExists($conn, "boxing_items", "attributes")) {
+    $conn->query("ALTER TABLE boxing_items ADD COLUMN attributes TEXT DEFAULT NULL");
+}
+
 /* ================= VIEW TRACKING ================= */
 if (isset($_GET['view_id'])) {
     $vid = intval($_GET['view_id']);
@@ -142,8 +173,30 @@ if ($bat_result) {
     }
 }
 
+/* ================= BADMINTON ITEMS ================= */
+$all_badminton = [];
+$badm_result = $conn->query("SELECT *, created_at FROM badminton_items ORDER BY id DESC");
+if ($badm_result) {
+    while ($badm = $badm_result->fetch_assoc()) {
+        $badm['_source'] = 'badminton';
+        $badm['sport_type'] = 'Badminton';
+        $all_badminton[] = $badm;
+    }
+}
+
+/* ================= BOXING ITEMS ================= */
+$all_boxing = [];
+$boxing_result = $conn->query("SELECT *, created_at FROM boxing_items ORDER BY id DESC");
+if ($boxing_result) {
+    while ($boxing = $boxing_result->fetch_assoc()) {
+        $boxing['_source'] = 'boxing';
+        $boxing['sport_type'] = 'Boxing';
+        $all_boxing[] = $boxing;
+    }
+}
+
 /* ================= MERGE ALL PRODUCTS AND SORT BY CREATED_AT (NEWEST FIRST) ================= */
-$all_products = array_merge($all_cards, $all_sitems, $all_boots, $all_bats);
+$all_products = array_merge($all_cards, $all_sitems, $all_boots, $all_bats, $all_badminton, $all_boxing);
 usort($all_products, function($a, $b) {
     $timeA = strtotime($a['created_at'] ?? '1970-01-01');
     $timeB = strtotime($b['created_at'] ?? '1970-01-01');
@@ -156,50 +209,139 @@ $total_cards = count($all_products);
 
 /* ================= CORRECTED IMAGE PATH FUNCTION ================= */
 function getImagePath($row, $source) {
-    // Get the stored image path
     if ($source === 'boot') {
         $img = $row['main_image'] ?? '';
     } elseif ($source === 'bat') {
         $img = $row['main_image'] ?? '';
+    } elseif ($source === 'badminton') {
+        if (!empty($row['main_image'])) {
+            $img = $row['main_image'];
+        } else {
+            $images = json_decode($row['images'], true);
+            $img = (is_array($images) && count($images) > 0) ? $images[0] : '';
+        }
+    } elseif ($source === 'boxing') {
+        if (!empty($row['main_image'])) {
+            $img = $row['main_image'];
+        } else {
+            $images = json_decode($row['images'], true);
+            $img = (is_array($images) && count($images) > 0) ? $images[0] : '';
+        }
     } else {
         $img = $row['image'] ?? '';
     }
     
-    // If no image, return placeholder
     if (empty($img)) {
         return 'https://placehold.co/400x300?text=No+Image';
     }
-    
-    // If it's already an absolute URL (http/https), return as is
     if (preg_match('/^https?:\/\//i', $img)) {
         return $img;
     }
-    
-    // Remove any leading slash for consistency
     $img = ltrim($img, '/');
-    
-    // If the path already starts with '../' (relative from current file), keep it
     if (strpos($img, '../') === 0) {
         return $img;
     }
-    
-    // All images are stored in the root 'uploads' folder (one level above 'publics')
-    // From publics/index.php, we need to go up one level: '../uploads/...'
-    // The stored path is like 'uploads/boots/...' or 'uploads/jerseys/...'
-    return '../' . $img;
+    $fullPath = __DIR__ . '/' . $img;
+    if (!file_exists($fullPath) && file_exists(__DIR__ . '/../' . $img)) {
+        return '../' . $img;
+    }
+    return $img;
 }
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-<title>SportGhar — Nepal's #1 Sports Store</title>
+<title>PlayZo - All Sports Products in One Place</title>
+<link rel="shortcut icon" href="../img_logo/cropped_circle_image.png" type="image/x-icon">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<meta name="description" content="PlayZo is Nepal's complete online sports marketplace where you can buy jerseys, sports gear, fitness equipment, shoes, and accessories all in one place.">
+<meta name="keywords" content="PlayZo, sports shop Nepal, buy sports gear online, sports jerseys Nepal, fitness equipment Nepal, sports accessories, online sports store">
+<meta name="author" content="PlayZo">
+<meta name="robots" content="index, follow">
+
+<meta property="og:title" content="PlayZo - All Sports Products in One Place">
+<meta property="og:description" content="Shop all sports gear, jerseys, fitness equipment, and accessories online at PlayZo Nepal.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.playzo.com.np">
+<meta property="og:image" content="https://www.playzo.com.np/logo.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PlayZo - All Sports Products in One Place">
+<meta name="twitter:description" content="Nepal's one-stop online sports marketplace for all sports products.">
+<meta name="twitter:image" content="https://www.playzo.com.np/logo.png">
+
+<link rel="canonical" href="https://www.playzo.com.np">
 <style>
-/* ---------- BASE STYLES (IMPROVED FOR SIMPLICITY, MOBILE) ---------- */
+/* ==================== PAGE LOADER ==================== */
+#page-loader {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+#page-loader.hide {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+.loader-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Sora', sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: #111827;
+    letter-spacing: -0.5px;
+}
+.loader-logo i {
+    font-size: 28px;
+    color: #f97316;
+}
+.loader-bar-wrap {
+    width: 200px;
+    height: 4px;
+    background: #f3f4f6;
+    border-radius: 99px;
+    overflow: hidden;
+}
+.loader-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #f97316, #fbbf24);
+    border-radius: 99px;
+    animation: loaderFill 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes loaderFill {
+    0%   { width: 0%; }
+    60%  { width: 75%; }
+    85%  { width: 92%; }
+    100% { width: 100%; }
+}
+.loader-text {
+    font-family: 'Sora', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* ==================== BASE STYLES ==================== */
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f0f2f5;color:#1a1a2e;}
+body.loading { overflow: hidden; }
+
+/* ==================== SLIDER ==================== */
 .sw{position:relative;width:100%;height:420px;overflow:hidden;border-radius:0 0 28px 28px;box-shadow:0 8px 40px rgba(0,0,0,.18);}
 .sw-track{display:flex;height:100%;transition:transform .75s cubic-bezier(.77,0,.18,1);}
 .sw-slide{min-width:100%;position:relative;flex-shrink:0;}
@@ -210,7 +352,6 @@ body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f0f2f5;color:
 .sw-desc{font-size:15px;color:#cbd5e1;max-width:520px;line-height:1.7;margin-bottom:22px;}
 .sw-btn{display:inline-flex;align-items:center;gap:9px;padding:13px 32px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;text-decoration:none;border-radius:50px;font-weight:700;font-size:14px;font-family:'Sora',sans-serif;border:none;cursor:pointer;transition:.3s;box-shadow:0 8px 24px rgba(234,88,12,.45);}
 .sw-btn:hover{transform:translateY(-3px);box-shadow:0 14px 32px rgba(234,88,12,.6);}
-/* SIMPLER SLIDER BUTTONS - LESS DESIGN */
 .sw-arr{position:absolute;top:50%;transform:translateY(-50%);z-index:20;width:40px;height:40px;border-radius:40px;background:rgba(0,0,0,0.6);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.25s;border:none;}
 .sw-arr:hover{background:#f97316;}
 .sw-arr.l{left:16px;}.sw-arr.r{right:16px;}
@@ -219,10 +360,14 @@ body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f0f2f5;color:
 .sw-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:.35s;}
 .sw-dot.on{background:#f97316;width:26px;border-radius:5px;}
 .sw-counter{position:absolute;top:18px;right:20px;z-index:20;background:rgba(0,0,0,.48);color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;backdrop-filter:blur(6px);}
+
+/* ==================== SECTION HEADERS ==================== */
 .sec-hd{text-align:center;padding:38px 20px 6px;}
 .sec-hd h2{font-size:24px;font-weight:800;color:#111827;margin-bottom:5px;font-family:'Sora',sans-serif;letter-spacing:-.3px;}
 .sec-hd p{font-size:13.5px;color:#6b7280;}
 .sec-line{width:44px;height:3px;background:linear-gradient(90deg,#f97316,#fbbf24);border-radius:2px;margin:10px auto 0;}
+
+/* ==================== FILTER TABS ==================== */
 .ftabs-wrap{position:relative;padding:18px 0 6px;}
 .ftabs-wrap::before{content:'';position:absolute;left:0;top:0;bottom:0;width:40px;background:linear-gradient(90deg,#f0f2f5,transparent);z-index:5;pointer-events:none;}
 .ftabs-wrap::after{content:'';position:absolute;right:0;top:0;bottom:0;width:40px;background:linear-gradient(270deg,#f0f2f5,transparent);z-index:5;pointer-events:none;}
@@ -232,12 +377,52 @@ body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f0f2f5;color:
 .ftab i{font-size:11px;}
 .ftab:hover{border-color:#f97316;color:#f97316;background:#fff7ed;}
 .ftab.on{background:#f97316;border-color:#f97316;color:#fff;font-weight:700;box-shadow:0 4px 12px rgba(249,115,22,.32);}
+
+/* ==================== RESULT INFO ==================== */
 .result-info{text-align:center;font-size:12.5px;color:#9ca3af;margin-bottom:4px;padding:0 20px;}
 .result-info span{color:#111827;font-weight:700;}
-.cgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;max-width:1500px;margin:0 auto;padding:14px 20px 40px;align-items:start;}
-.card{background:#fff;border-radius:16px;border:1.5px solid #065af5;overflow:hidden;position:relative;opacity:0;transform:translateY(18px) scale(.98);transition:opacity .38s ease, transform .35s ease, box-shadow .28s ease, border-color .28s ease;box-shadow:0 2px 10px rgba(0,0,0,.06);cursor:pointer;text-decoration:none;display:block;}
-/* Remove fixed height, let content decide */
-.card.visible{opacity:1;transform:translateY(0) scale(1);}
+
+/* ==================== CARD GRID ==================== */
+.cgrid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:16px;
+    max-width:1500px;
+    margin:0 auto;
+    padding:14px 20px 40px;
+    align-items:start;
+    min-height:600px;
+}
+
+/* ==================== CARD ==================== */
+.card{
+    background:#fff;
+    border-radius:16px;
+    border:1.5px solid #065af5;
+    overflow:hidden;
+    position:relative;
+    opacity:0;
+    transform:translateY(16px);
+    transition:opacity .38s ease, transform .35s ease, box-shadow .28s ease, border-color .28s ease;
+    box-shadow:0 2px 10px rgba(0,0,0,.06);
+    cursor:pointer;
+    text-decoration:none;
+    display:block;
+}
+.card.visible{
+    opacity:1;
+    transform:translateY(0);
+}
+.card.hidden-card{
+    opacity:0 !important;
+    pointer-events:none;
+    height:0;
+    overflow:hidden;
+    padding:0;
+    margin:0;
+    border:none;
+    min-height:0;
+}
 .card.visible:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 28px 55px rgba(249,115,22,.16),0 8px 24px rgba(0,0,0,.1),0 0 0 2px rgba(249,115,22,.25);border-color:#fdba74;z-index:10;}
 .card.visible:hover .cimg img{transform:scale(1.05);}
 .card.visible:hover .ctitle{color:#ea580c;}
@@ -262,28 +447,48 @@ body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f0f2f5;color:
 .cviews i{color:#58f30b;font-size:9.5px;}
 .cstars{color:#f03806;font-size:12px;letter-spacing:.7px;}
 .csport{font-size:9px;font-weight:700;color:#6366f1;background:#eef2ff;border:1px solid #c7d2fe;padding:2px 6px;border-radius:9px;display:flex;align-items:center;gap:3px;white-space:nowrap;font-family:'Sora',sans-serif;}
-.ctagline{margin-top:9px;padding:7px 10px;border:1.5px dashed #5ef826;border-radius:8px;background:linear-gradient(135deg, rgb(251, 248, 245) 0%, #f6f6f4 100%);display:flex;align-items:center;justify-content:center;gap:5px;font-size:8.5px;font-weight:700;color:#0f0f13;font-family:'Sora',sans-serif;letter-spacing:.5px;text-transform:uppercase;line-height:1.4;text-align:center;}
+.ctagline{margin-top:9px;padding:7px 10px;border:1.5px dashed #5ef826;border-radius:8px;background:linear-gradient(135deg,rgb(251,248,245) 0%,#f6f6f4 100%);display:flex;align-items:center;justify-content:center;gap:5px;font-size:8.5px;font-weight:700;color:#0f0f13;font-family:'Sora',sans-serif;letter-spacing:.5px;text-transform:uppercase;line-height:1.4;text-align:center;}
 .ctagline i{font-size:8px;color:#f97316;flex-shrink:0;}
+
+/* ==================== SKELETON ==================== */
+@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+.sk-box{background:linear-gradient(90deg,#efefef 25%,#e4e4e4 50%,#efefef 75%);background-size:1200px 100%;animation:shimmer 1.5s infinite linear;border-radius:8px;}
+.card-skeleton{background:#fff;border-radius:16px;overflow:hidden;border:1.5px solid #ececec;box-shadow:0 2px 10px rgba(0,0,0,.05);}
+.sk-img{height:212px;}
+.sk-body{padding:11px 12px 12px;}
+.sk-line{height:11px;margin-bottom:8px;}
+.sk-line.w90{width:90%;}.sk-line.w60{width:60%;}.sk-line.w45{width:45%;}
+.sk-btn{height:36px;border-radius:10px;margin-top:5px;}
+#skeleton-grid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:16px;
+    max-width:1500px;
+    margin:0 auto;
+    padding:14px 20px 40px;
+}
+
+/* ==================== NO RESULTS ==================== */
+.no-results{
+    grid-column:1/-1;
+    text-align:center;
+    padding:60px 20px;
+    color:#9ca3af;
+    display:none;
+}
+.no-results i{font-size:44px;color:#e5e7eb;margin-bottom:14px;display:block;}
+.no-results h3{font-size:17px;font-weight:700;color:#6b7280;margin-bottom:7px;font-family:'Sora',sans-serif;}
+.no-results p{font-size:13px;}
+
+/* ==================== PAGINATION ==================== */
 .pagination-wrap{display:flex;justify-content:center;align-items:center;gap:8px;padding:10px 20px 60px;flex-wrap:wrap;}
 .pg-btn{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 12px;border-radius:9px;font-size:12.5px;font-weight:700;font-family:'Sora',sans-serif;text-decoration:none;cursor:pointer;border:1.5px solid #e5e7eb;background:#fff;color:#6b7280;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.05);}
 .pg-btn:hover{background:#fff7ed;border-color:#f97316;color:#f97316;}
 .pg-btn.active{background:#f97316;border-color:#f97316;color:#fff;font-weight:800;box-shadow:0 4px 12px rgba(249,115,22,.32);}
 .pg-btn.disabled{opacity:.3;pointer-events:none;}
 .pg-ellipsis{color:#9ca3af;font-size:14px;padding:0 3px;line-height:38px;}
-@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
-.sk-box{background:linear-gradient(90deg,#efefef 25%,#e4e4e4 50%,#efefef 75%);background-size:1200px 100%;animation:shimmer 1.5s infinite linear;border-radius:8px;}
-.card-skeleton{background:#fff;border-radius:16px;overflow:hidden;border:1.5px solid #ececec;box-shadow:0 2px 10px rgba(0,0,0,.05);}
-.sk-img{height:170px;}
-.sk-body{padding:11px 12px 12px;}
-.sk-line{height:11px;margin-bottom:8px;}
-.sk-line.w90{width:90%;}.sk-line.w60{width:60%;}.sk-line.w45{width:45%;}
-.sk-btn{height:36px;border-radius:10px;margin-top:5px;}
-#skeleton-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;max-width:1500px;margin:0 auto;padding:14px 20px 40px;}
-.no-results{grid-column:1/-1;text-align:center;padding:60px 20px;color:#9ca3af;display:none;}
-.no-results i{font-size:44px;color:#e5e7eb;margin-bottom:14px;display:block;}
-.no-results h3{font-size:17px;font-weight:700;color:#6b7280;margin-bottom:7px;font-family:'Sora',sans-serif;}
-.no-results p{font-size:13px;}
-/* REDUCED GAP FOR LOCATION SECTION */
+
+/* ==================== LOCATION SECTION ==================== */
 .loc-section{max-width:1500px;margin:0 auto 60px;padding:0 20px;}
 .loc-hd{text-align:center;padding:48px 20px 28px;}
 .loc-hd h2{font-size:24px;font-weight:800;color:#111827;font-family:'Sora',sans-serif;letter-spacing:-.3px;margin-bottom:6px;}
@@ -315,7 +520,8 @@ body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f0f2f5;color:
 .loc-dir-btn i{font-size:14px;}
 .loc-tagline{background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1.5px dashed #fdba74;border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:9.5px;font-weight:700;color:#c2410c;font-family:'Sora',sans-serif;letter-spacing:.5px;text-transform:uppercase;text-align:center;}
 .loc-tagline i{color:#f97316;font-size:9px;flex-shrink:0;}
-/* ===== RESPONSIVE: TWO CARDS PER ROW, SINGLE-LINE TITLES ===== */
+
+/* ==================== RESPONSIVE ==================== */
 @media(max-width:1280px) {
     .cgrid, #skeleton-grid { grid-template-columns: repeat(4, 1fr); }
 }
@@ -328,71 +534,17 @@ body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f0f2f5;color:
         gap: 12px;
         padding: 10px 12px 30px;
     }
-    .card {
-        height: auto;
-        min-height: 340px;
-        border-radius: 14px;
-    }
-    .cimg img {
-        height: 170px;
-        object-fit: cover;
-    }
-    .cbody {
-        padding: 8px 10px 10px;
-    }
-    /* Force single line for title and club */
-    .ctitle {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 12px;
-        line-height: 1.3;
-        margin-bottom: 4px;
-    }
-    .cclub {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 9px;
-        margin-bottom: 6px;
-    }
-    .cmeta {
-        flex-wrap: wrap;
-        justify-content: space-between;
-        margin-bottom: 6px;
-        gap: 4px;
-    }
-    .ctype {
-        font-size: 8px;
-        padding: 2px 6px;
-        white-space: nowrap;
-    }
-    .cprice {
-        white-space: nowrap;
-        font-size: 12px;
-    }
-    .cfoot {
-        flex-wrap: wrap;
-        gap: 4px;
-        padding-top: 5px;
-        margin-bottom: 6px;
-    }
-    .cviews, .csport, .cstars {
-        font-size: 9px;
-        white-space: nowrap;
-    }
-    .csport {
-        white-space: nowrap;
-    }
-    .ctagline {
-        font-size: 7px;
-        padding: 4px 6px;
-        margin-top: 5px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    /* slider & location */
+    .card { height: auto; min-height: 340px; border-radius: 14px; }
+    .cimg img { height: 170px; object-fit: cover; }
+    .cbody { padding: 8px 10px 10px; }
+    .ctitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; line-height: 1.3; margin-bottom: 4px; }
+    .cclub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9px; margin-bottom: 6px; }
+    .cmeta { flex-wrap: wrap; justify-content: space-between; margin-bottom: 6px; gap: 4px; }
+    .ctype { font-size: 8px; padding: 2px 6px; white-space: nowrap; }
+    .cprice { white-space: nowrap; font-size: 12px; }
+    .cfoot { flex-wrap: wrap; gap: 4px; padding-top: 5px; margin-bottom: 6px; }
+    .cviews, .csport, .cstars { font-size: 9px; white-space: nowrap; }
+    .ctagline { font-size: 7px; padding: 4px 6px; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sw { height: 360px; }
     .sw-overlay { padding: 20px; }
     .sw-title { font-size: 32px; max-width: 100%; }
@@ -402,41 +554,33 @@ body{font-family:'DM Sans',sans-serif;min-height:100vh;background:#f0f2f5;color:
     .loc-map { min-height: 260px; }
     .loc-map iframe { min-height: 260px; }
     .loc-info { padding: 18px; }
+    #page-loader .loader-logo { font-size: 22px; }
 }
 @media(max-width:550px) {
-    .cgrid, #skeleton-grid {
-        gap: 10px;
-        padding: 8px 10px 25px;
-    }
-    .card {
-        min-height: 300px;
-    }
-    .cimg img {
-        height: 180px;
-    }
-    .ctitle {
-        font-size: 11px;
-    }
-    .cclub {
-        font-size: 8px;
-    }
-    .cprice {
-        font-size: 11px;
-    }
-    .ctype {
-        font-size: 7px;
-    }
-    .cviews, .csport, .cstars {
-        font-size: 8px;
-    }
-    .ctagline {
-        font-size: 6px;
-        padding: 3px 4px;
-    }
+    .cgrid, #skeleton-grid { gap: 10px; padding: 8px 10px 25px; }
+    .card { min-height: 300px; }
+    .cimg img { height: 180px; }
+    .ctitle { font-size: 11px; }
+    .cclub { font-size: 8px; }
+    .cprice { font-size: 11px; }
+    .ctype { font-size: 7px; }
+    .cviews, .csport, .cstars { font-size: 8px; }
+    .ctagline { font-size: 6px; padding: 3px 4px; }
 }
 </style>
 </head>
-<body>
+<body class="loading">
+
+<!-- ==================== PAGE LOADER ==================== -->
+<div id="page-loader">
+    <div class="loader-logo">
+        <i class="fa fa-shirt"></i> SportGhar Nepal
+    </div>
+    <div class="loader-bar-wrap">
+        <div class="loader-bar"></div>
+    </div>
+    <div class="loader-text">Loading products…</div>
+</div>
 
 <!-- ==================== SLIDER ==================== -->
 <?php
@@ -499,9 +643,9 @@ $total_slides = count($slides_data);
         <button class="ftab" onclick="filterCards(this,'Cricket')"><i class="fa fa-cricket-bat-ball"></i> Cricket Items</button>
         <button class="ftab" onclick="filterCards(this,'Basketball')"><i class="fa fa-basketball"></i> Basketball Items</button>
         <button class="ftab" onclick="filterCards(this,'Badminton')"><i class="fa fa-table-tennis-paddle-ball"></i> Badminton Items</button>
+        <button class="ftab" onclick="filterCards(this,'Boxing')"><i class="fa fa-hand-fist"></i> Boxing Items</button>
         <button class="ftab" onclick="filterCards(this,'Volleyball')"><i class="fa fa-volleyball"></i> Volleyball Items</button>
         <button class="ftab" onclick="filterCards(this,'Tennis')"><i class="fa fa-baseball-bat-ball"></i> Tennis Items</button>
-        <button class="ftab" onclick="filterCards(this,'Boxing')"><i class="fa fa-hand-fist"></i> Boxing Items</button>
         <button class="ftab" onclick="filterCards(this,'Cycling')"><i class="fa fa-bicycle"></i> Cycling Items</button>
         <button class="ftab" onclick="filterCards(this,'Rugby')"><i class="fa fa-football"></i> Rugby Items</button>
         <button class="ftab" onclick="filterCards(this,'Esports')"><i class="fa fa-gamepad"></i> Esports Items</button>
@@ -516,7 +660,7 @@ $total_slides = count($slides_data);
     <span id="total-count"><?php echo $total_cards; ?></span> products
 </p>
 
-<!-- SKELETON GRID -->
+<!-- SKELETON GRID (shown while loading) -->
 <div id="skeleton-grid">
     <?php for($s=0;$s<10;$s++): ?>
     <div class="card-skeleton">
@@ -531,7 +675,7 @@ $total_slides = count($slides_data);
     <?php endfor; ?>
 </div>
 
-<!-- REAL CARDS – (SORTED BY created_at DESC) -->
+<!-- REAL CARDS (sorted by created_at DESC) -->
 <div class="cgrid" id="cgrid" style="display:none;">
 
 <?php
@@ -540,9 +684,9 @@ $sport_icons = [
     'Basketball' => 'fa-basketball',
     'Cricket'    => 'fa-cricket-bat-ball',
     'Badminton'  => 'fa-table-tennis-paddle-ball',
+    'Boxing'     => 'fa-hand-fist',
     'Volleyball' => 'fa-volleyball',
     'Tennis'     => 'fa-baseball-bat-ball',
-    'Boxing'     => 'fa-hand-fist',
     'Cycling'    => 'fa-bicycle',
     'Rugby'      => 'fa-football',
     'Esports'    => 'fa-gamepad',
@@ -552,7 +696,7 @@ $sport_icons = [
 
 foreach($all_products as $row):
     $source = $row['_source'];
-    
+
     if ($source === 'jersey'):
         $sport      = htmlspecialchars($row['sport_type'] ?? 'Other');
         $is_top     = ($row['is_top'] == 1);
@@ -575,7 +719,7 @@ foreach($all_products as $row):
                 <?php if($is_new): ?><div class="cbadge cb-new">✦ NEW</div>
                 <?php elseif($is_sell): ?><div class="cbadge cb-sell">Sell</div>
                 <?php elseif(!$has_disc): ?><div class="cbadge cb-hot">POPULAR</div><?php endif; ?>
-                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=No+Image'" loading="lazy">
             </div>
             <div class="cbody">
                 <div class="ctitle"><?php echo $title; ?></div>
@@ -589,7 +733,7 @@ foreach($all_products as $row):
                     <span class="csport"><i class="fa <?php echo $ic; ?>"></i> <?php echo $sport; ?></span>
                     <span class="cstars"><?php for($i=1;$i<=5;$i++) echo $i<=$avg?'★':'☆'; ?></span>
                 </div>
-                <div class="ctagline"><i class="fa fa-heart"></i> Sport Ghar Nepal will always be with you &mdash;&mdash; ral</div>
+                <div class="ctagline">jersey From &mdash;&mdash; PlayZo Nepal</div>
             </div>
         </div>
     <?php elseif ($source === 'item'):
@@ -614,7 +758,7 @@ foreach($all_products as $row):
                 <?php if($is_new): ?><div class="cbadge cb-new">✦ NEW</div>
                 <?php elseif($is_sell): ?><div class="cbadge cb-sell">🔥 HOT</div>
                 <?php elseif(!$has_disc): ?><div class="cbadge cb-hot">POPULAR</div><?php endif; ?>
-                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=No+Image'" loading="lazy">
             </div>
             <div class="cbody">
                 <div class="ctitle"><?php echo $title; ?></div>
@@ -628,7 +772,7 @@ foreach($all_products as $row):
                     <span class="csport"><i class="fa <?php echo $ic; ?>"></i> <?php echo $sport; ?></span>
                     <span class="cstars"><?php for($i=1;$i<=5;$i++) echo $i<=$avg?'★':'☆'; ?></span>
                 </div>
-                <div class="ctagline"><i class="fa fa-heart"></i> SportGharNepal will always be with you &mdash;&mdash; ral</div>
+                <div class="ctagline"> Football Ball &mdash;&mdash; PlayZo Nepal</div>
             </div>
         </div>
     <?php elseif ($source === 'boot'):
@@ -653,7 +797,7 @@ foreach($all_products as $row):
                 <?php if($is_new): ?><div class="cbadge cb-new">✦ NEW</div>
                 <?php elseif($is_sell): ?><div class="cbadge cb-sell">SOLD OUT</div>
                 <?php elseif(!$has_disc): ?><div class="cbadge cb-hot">POPULAR</div><?php endif; ?>
-                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=No+Image'" loading="lazy">
             </div>
             <div class="cbody">
                 <div class="ctitle"><?php echo $title; ?></div>
@@ -667,7 +811,7 @@ foreach($all_products as $row):
                     <span class="csport"><i class="fa <?php echo $ic; ?>"></i> <?php echo $sport; ?></span>
                     <span class="cstars"><?php for($i=1;$i<=5;$i++) echo $i<=$avg?'★':'☆'; ?></span>
                 </div>
-                <div class="ctagline"><i class="fa fa-heart"></i> SportGharNepal will always be with you &mdash;&mdash; ral</div>
+                <div class="ctagline">Football Boot &mdash;&mdash; PlayZo Nepal</div>
             </div>
         </div>
     <?php elseif ($source === 'bat'):
@@ -681,7 +825,7 @@ foreach($all_products as $row):
         $disc_percent = $has_disc ? round((($orig_price - $final_price) / $orig_price) * 100) : 0;
         $avg        = round($row['rating'] ?? 0);
         $ic         = 'fa-cricket-bat-ball';
-        $detail_url = "bat_details.php?id=" . $row['id'];
+        $detail_url = "../sellers/bat_details.php?id=" . $row['id'];
         $img_src    = getImagePath($row, 'bat');
         $title      = htmlspecialchars($row['bat_name']);
         $brand      = htmlspecialchars($row['brand']);
@@ -693,11 +837,11 @@ foreach($all_products as $row):
                 <?php if($is_new): ?><div class="cbadge cb-new">✦ NEW</div>
                 <?php elseif($is_sell): ?><div class="cbadge cb-sell">OUT OF STOCK</div>
                 <?php elseif(!$has_disc): ?><div class="cbadge cb-hot">POPULAR</div><?php endif; ?>
-                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=Bat'">
+                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=Bat'" loading="lazy">
             </div>
             <div class="cbody">
                 <div class="ctitle"><?php echo $title; ?></div>
-                <div class="cclub"><?php echo $brand; ?> • Cricket Bat</div>
+                <div class="cclub"><?php echo $brand; ?> • Cricket Bat </div>
                 <div class="cmeta">
                     <span class="ctype"><?php echo $weight; ?></span>
                     <span class="cprice">
@@ -712,7 +856,87 @@ foreach($all_products as $row):
                     <span class="csport"><i class="fa <?php echo $ic; ?>"></i> <?php echo $sport; ?></span>
                     <span class="cstars"><?php for($i=1;$i<=5;$i++) echo $i<=$avg?'★':'☆'; ?></span>
                 </div>
-                <div class="ctagline"><i class="fa fa-heart"></i> Cricket Bat</div>
+                <div class="ctagline"> Cricket Bat &mdash;&mdash; PlayZo Nepal</div>
+            </div>
+        </div>
+    <?php elseif ($source === 'badminton'):
+        $sport      = 'Badminton';
+        $is_top     = ($row['is_top'] == 1);
+        $has_disc   = !empty($row['discount_percent']) && $row['discount_percent'] > 0;
+        $is_sell    = ($row['stock'] <= 0);
+        $is_new     = 0;
+        $orig_price = $has_disc ? round($row['regular_price'] / (1 - $row['discount_percent']/100)) : 0;
+        $avg        = round($row['rating'] ?? 0);
+        $ic         = 'fa-table-tennis-paddle-ball';
+        $detail_url = "../sellers/badminton_details.php?id=" . $row['id'];
+        $img_src    = getImagePath($row, 'badminton');
+        $title      = htmlspecialchars($row['title']);
+        $club_line  = htmlspecialchars($row['store_name'] ?? 'PlayZo Nepal');
+        $type_badge = htmlspecialchars($row['category'] ?? 'Badminton Gear');
+        $price      = $row['regular_price'];
+        ?>
+        <div class="card <?php echo $is_top ? 'card-top' : ''; ?>" data-sport="<?php echo $sport; ?>" data-source="badminton" onclick="window.location='<?php echo $detail_url; ?>'">
+            <div class="cimg">
+                <?php if($has_disc): ?><div class="cbadge cb-disc"><?php echo $row['discount_percent']; ?>% OFF</div><?php endif; ?>
+                <?php if($is_new): ?><div class="cbadge cb-new">✦ NEW</div>
+                <?php elseif($is_sell): ?><div class="cbadge cb-sell">OUT OF STOCK</div>
+                <?php elseif(!$has_disc && $is_top): ?><div class="cbadge cb-hot">TOP RATED</div>
+                <?php elseif(!$has_disc): ?><div class="cbadge cb-hot">POPULAR</div><?php endif; ?>
+                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=No+Image'" loading="lazy">
+            </div>
+            <div class="cbody">
+                <div class="ctitle"><?php echo $title; ?></div>
+                <div class="cclub"><?php echo $club_line; ?></div>
+                <div class="cmeta">
+                    <span class="ctype"><?php echo $type_badge; ?></span>
+                    <span class="cprice"><?php if($has_disc): ?><span class="cprice-old">Rs.<?php echo number_format($orig_price); ?></span><?php endif; ?>Rs.<?php echo number_format($price); ?></span>
+                </div>
+                <div class="cfoot">
+                    <span class="cviews"><i class="fa fa-eye"></i> <?php echo number_format($row['views'] ?? 0); ?></span>
+                    <span class="csport"><i class="fa <?php echo $ic; ?>"></i> <?php echo $sport; ?></span>
+                    <span class="cstars"><?php for($i=1;$i<=5;$i++) echo $i<=$avg?'★':'☆'; ?></span>
+                </div>
+                <div class="ctagline">Badminton Sets &mdash;&mdash; PlayZo Nepal</div>
+            </div>
+        </div>
+    <?php elseif ($source === 'boxing'):
+        $sport      = 'Boxing';
+        $is_top     = ($row['is_top'] == 1);
+        $has_disc   = !empty($row['discount_percent']) && $row['discount_percent'] > 0;
+        $is_sell    = ($row['stock'] <= 0);
+        $is_new     = (!empty($row['is_new']) && $row['is_new'] == 1);
+        $orig_price = $has_disc ? round($row['regular_price'] / (1 - $row['discount_percent']/100)) : 0;
+        $avg        = round($row['rating'] ?? 0);
+        $ic         = 'fa-hand-fist';
+        $detail_url = "../sellers/boxing_details.php?id=" . $row['id'];
+        $img_src    = getImagePath($row, 'boxing');
+        $title      = htmlspecialchars($row['title']);
+        $club_line  = htmlspecialchars($row['brand'] ?? '') . ' • ' . htmlspecialchars($row['store_name'] ?? 'PlayZo Nepal');
+        $type_badge = htmlspecialchars($row['category'] ?? 'Boxing Gear');
+        $price      = $row['regular_price'];
+        ?>
+        <div class="card <?php echo $is_top ? 'card-top' : ''; ?>" data-sport="<?php echo $sport; ?>" data-source="boxing" onclick="window.location='<?php echo $detail_url; ?>'">
+            <div class="cimg">
+                <?php if($has_disc): ?><div class="cbadge cb-disc"><?php echo $row['discount_percent']; ?>% OFF</div><?php endif; ?>
+                <?php if($is_new): ?><div class="cbadge cb-new">✦ NEW</div>
+                <?php elseif($is_sell): ?><div class="cbadge cb-sell">OUT OF STOCK</div>
+                <?php elseif(!$has_disc && $is_top): ?><div class="cbadge cb-hot">TOP RATED</div>
+                <?php elseif(!$has_disc): ?><div class="cbadge cb-hot">POPULAR</div><?php endif; ?>
+                <img src="<?php echo $img_src; ?>" alt="<?php echo $title; ?>" onerror="this.src='https://placehold.co/400x300?text=No+Image'" loading="lazy">
+            </div>
+            <div class="cbody">
+                <div class="ctitle"><?php echo $title; ?></div>
+                <div class="cclub"><?php echo $club_line; ?></div>
+                <div class="cmeta">
+                    <span class="ctype"><?php echo $type_badge; ?></span>
+                    <span class="cprice"><?php if($has_disc): ?><span class="cprice-old">Rs.<?php echo number_format($orig_price); ?></span><?php endif; ?>Rs.<?php echo number_format($price); ?></span>
+                </div>
+                <div class="cfoot">
+                    <span class="cviews"><i class="fa fa-eye"></i> <?php echo number_format($row['views'] ?? 0); ?></span>
+                    <span class="csport"><i class="fa <?php echo $ic; ?>"></i> <?php echo $sport; ?></span>
+                    <span class="cstars"><?php for($i=1;$i<=5;$i++) echo $i<=$avg?'★':'☆'; ?></span>
+                </div>
+                <div class="ctagline">Boxing Sets &mdash;&mdash; PlayZo Nepal</div>
             </div>
         </div>
     <?php endif; ?>
@@ -729,7 +953,7 @@ foreach($all_products as $row):
 <!-- PAGINATION -->
 <div class="pagination-wrap" id="pagination-wrap"></div>
 
-<!-- LOCATION SECTION (REDUCED GAP) -->
+<!-- LOCATION SECTION -->
 <div class="loc-hd">
     <h2><i class="fa fa-location-dot" style="color:#f97316;margin-right:8px;"></i> Find Us</h2>
     <p>Visit us in Kathmandu — we're easy to find!</p>
@@ -774,96 +998,156 @@ var CARDS_PER_PAGE = 15;
 var currentPage    = 1;
 var currentSport   = 'all';
 
-/* ===== SLIDER ===== */
+/* ==================== PAGE LOADER ==================== */
+(function() {
+    var loader = document.getElementById('page-loader');
+    var body   = document.body;
+
+    function hideLoader() {
+        loader.classList.add('hide');
+        body.classList.remove('loading');
+        setTimeout(function() { loader.style.display = 'none'; }, 520);
+    }
+
+    if (document.readyState === 'complete') {
+        setTimeout(hideLoader, 700);
+    } else {
+        window.addEventListener('load', function() {
+            setTimeout(hideLoader, 400);
+        });
+    }
+    setTimeout(hideLoader, 3000);
+})();
+
+/* ==================== SLIDER ==================== */
 var cur=0, total=<?php echo max($total_slides,1); ?>;
 var trk=document.getElementById('sw-trk');
 var dots=document.querySelectorAll('.sw-dot');
 var prog=0, progEl=document.getElementById('sw-prog'), ptimer;
 var ctr=document.getElementById('sw-ctr');
-function go(n){cur=(n+total)%total;trk.style.transform='translateX(-'+(cur*100)+'%)';dots.forEach(function(d,i){d.className='sw-dot'+(i===cur?' on':'');});ctr.textContent=(cur+1)+' / '+total;resetProg();}
+
+function go(n){
+    cur=(n+total)%total;
+    trk.style.transform='translateX(-'+(cur*100)+'%)';
+    dots.forEach(function(d,i){d.className='sw-dot'+(i===cur?' on':'');});
+    ctr.textContent=(cur+1)+' / '+total;
+    resetProg();
+}
 function mv(d){go(cur+d);}
-function resetProg(){clearInterval(ptimer);prog=0;progEl.style.width='0%';ptimer=setInterval(function(){prog+=100/45;progEl.style.width=Math.min(prog,100)+'%';if(prog>=100) go(cur+1);},100);}
+function resetProg(){
+    clearInterval(ptimer);
+    prog=0;
+    progEl.style.width='0%';
+    ptimer=setInterval(function(){
+        prog+=100/45;
+        progEl.style.width=Math.min(prog,100)+'%';
+        if(prog>=100) go(cur+1);
+    },100);
+}
 resetProg();
+
 var tx=0;
 document.getElementById('sw').addEventListener('touchstart',function(e){tx=e.touches[0].clientX;},{passive:true});
 document.getElementById('sw').addEventListener('touchend',function(e){var dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50) mv(dx<0?1:-1);});
 
-/* ===== SKELETON → REAL ===== */
-window.addEventListener('load',function(){
-    setTimeout(function(){
-        document.getElementById('skeleton-grid').style.display='none';
-        document.getElementById('cgrid').style.display='grid';
+/* ==================== SKELETON → REAL CARDS ==================== */
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        document.getElementById('skeleton-grid').style.display = 'none';
+        document.getElementById('cgrid').style.display = 'grid';
         renderPage(1);
-    },600);
+    }, 400);
 });
 
-/* ===== FILTER ===== */
-function filterCards(el,sport){
-    document.querySelectorAll('.ftab').forEach(function(t){t.classList.remove('on');});
+/* ==================== FILTER ==================== */
+function filterCards(el, sport) {
+    document.querySelectorAll('.ftab').forEach(function(t){ t.classList.remove('on'); });
     el.classList.add('on');
-    el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-    currentSport=sport;
-    currentPage=1;
+    el.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+    currentSport = sport;
+    currentPage  = 1;
     renderPage(1);
 }
-function getFilteredCards(){
-    var all=Array.from(document.querySelectorAll('#cgrid .card'));
-    if(currentSport==='all') return all;
-    return all.filter(function(c){return c.dataset.sport===currentSport;});
-}
-function renderPage(page){
-    currentPage=page;
-    var filtered=getFilteredCards();
-    var total=filtered.length;
-    var totalPg=Math.ceil(total/CARDS_PER_PAGE)||1;
-    if(page>totalPg) page=currentPage=totalPg;
-    var start=(page-1)*CARDS_PER_PAGE;
-    var end=start+CARDS_PER_PAGE;
 
-    Array.from(document.querySelectorAll('#cgrid .card')).forEach(function(c){
-        c.classList.remove('visible');
-        c.style.display='none';
+function getAllCards() {
+    return Array.from(document.querySelectorAll('#cgrid .card'));
+}
+
+function getFilteredCards() {
+    var all = getAllCards();
+    if (currentSport === 'all') return all;
+    return all.filter(function(c){ return c.dataset.sport === currentSport; });
+}
+
+function renderPage(page) {
+    currentPage = page;
+    var filtered = getFilteredCards();
+    var total    = filtered.length;
+    var totalPg  = Math.ceil(total / CARDS_PER_PAGE) || 1;
+    if (page > totalPg) page = currentPage = totalPg;
+    var start = (page - 1) * CARDS_PER_PAGE;
+    var end   = start + CARDS_PER_PAGE;
+
+    var visibleSet = new Set(filtered.slice(start, end));
+
+    getAllCards().forEach(function(c) {
+        c.classList.remove('visible', 'hidden-card');
+        c.style.cssText = '';
     });
 
-    var visible=filtered.slice(start,end);
-    var noRes=document.getElementById('no-results');
-    if(visible.length===0){
-        noRes.style.display='block';
+    getAllCards().forEach(function(c) {
+        if (visibleSet.has(c)) {
+        } else {
+            c.classList.add('hidden-card');
+        }
+    });
+
+    var noRes = document.getElementById('no-results');
+    if (visibleSet.size === 0) {
+        noRes.style.display = 'block';
     } else {
-        noRes.style.display='none';
-        visible.forEach(function(c,i){
-            c.style.display='';
-            setTimeout(function(){c.classList.add('visible');}, i*45);
+        noRes.style.display = 'none';
+        var idx = 0;
+        visibleSet.forEach(function(c) {
+            (function(card, i) {
+                setTimeout(function(){ card.classList.add('visible'); }, i * 40);
+            })(c, idx);
+            idx++;
         });
     }
-    var showCount=document.getElementById('showing-count');
-    if(showCount){
-        var from=total===0?0:start+1;
-        var to=Math.min(end,total);
-        showCount.textContent=total===0?'0':from+'–'+to;
+
+    var showCount = document.getElementById('showing-count');
+    if (showCount) {
+        var from = total === 0 ? 0 : start + 1;
+        var to   = Math.min(end, total);
+        showCount.textContent = total === 0 ? '0' : from + '–' + to;
     }
-    if(page>1){
-        var secHd=document.querySelector('.sec-hd');
-        if(secHd) secHd.scrollIntoView({behavior:'smooth'});
+
+    if (page > 1) {
+        var secHd = document.querySelector('.sec-hd');
+        if (secHd) secHd.scrollIntoView({behavior:'smooth'});
     }
-    buildPagination(page,totalPg);
+
+    buildPagination(page, totalPg);
 }
-function buildPagination(current,totalPg){
-    var wrap=document.getElementById('pagination-wrap');
-    if(totalPg<=1){wrap.innerHTML='';return;}
-    var html='';
-    html+='<a class="pg-btn'+(current===1?' disabled':'')+'" onclick="renderPage('+(current-1)+')"><i class="fa fa-chevron-left"></i></a>';
-    paginationRange(current,totalPg).forEach(function(p){
-        if(p==='...'){html+='<span class="pg-ellipsis">…</span>';}
-        else{html+='<a class="pg-btn'+(p===current?' active':'')+'" onclick="renderPage('+p+')">'+p+'</a>';}
+
+function buildPagination(current, totalPg) {
+    var wrap = document.getElementById('pagination-wrap');
+    if (totalPg <= 1) { wrap.innerHTML = ''; return; }
+    var html = '';
+    html += '<a class="pg-btn'+(current===1?' disabled':'')+'" onclick="renderPage('+(current-1)+')"><i class="fa fa-chevron-left"></i></a>';
+    paginationRange(current, totalPg).forEach(function(p) {
+        if (p === '...') { html += '<span class="pg-ellipsis">…</span>'; }
+        else { html += '<a class="pg-btn'+(p===current?' active':'')+'" onclick="renderPage('+p+')">'+p+'</a>'; }
     });
-    html+='<a class="pg-btn'+(current===totalPg?' disabled':'')+'" onclick="renderPage('+(current+1)+')"><i class="fa fa-chevron-right"></i></a>';
-    wrap.innerHTML=html;
+    html += '<a class="pg-btn'+(current===totalPg?' disabled':'')+'" onclick="renderPage('+(current+1)+')"><i class="fa fa-chevron-right"></i></a>';
+    wrap.innerHTML = html;
 }
-function paginationRange(current,total){
-    if(total<=7){var arr=[];for(var i=1;i<=total;i++)arr.push(i);return arr;}
-    if(current<=4) return [1,2,3,4,5,'...',total];
-    if(current>=total-3) return [1,'...',total-4,total-3,total-2,total-1,total];
+
+function paginationRange(current, total) {
+    if (total <= 7) { var arr=[]; for(var i=1;i<=total;i++) arr.push(i); return arr; }
+    if (current <= 4)        return [1,2,3,4,5,'...',total];
+    if (current >= total-3)  return [1,'...',total-4,total-3,total-2,total-1,total];
     return [1,'...',current-1,current,current+1,'...',total];
 }
 </script>

@@ -43,7 +43,7 @@ $first_name = $name_parts[0];
 $initials   = strtoupper(substr($name_parts[0], 0, 1));
 if (count($name_parts) > 1) $initials .= strtoupper(substr(end($name_parts), 0, 1));
 
-/* ── CREATE NEW SHOP (AJAX / POST) ── */
+/* ── CREATE NEW SHOP ── */
 $shop_created = false;
 if (isset($_POST['create_shop']) && !empty(trim($_POST['new_shop_name']))) {
     $new_shop = trim($_POST['new_shop_name']);
@@ -53,7 +53,6 @@ if (isset($_POST['create_shop']) && !empty(trim($_POST['new_shop_name']))) {
         $shop_created = true;
     }
     $stmt->close();
-    // Redirect to avoid resubmission
     if ($shop_created) {
         header("Location: add_jersey.php?shop_added=1");
         exit;
@@ -93,7 +92,7 @@ if (isset($_GET['edit'])) {
     $stmt->close();
 }
 
-/* ── ADD / UPDATE JERSEY (with shop_id) ── */
+/* ── ADD / UPDATE JERSEY (with rating, stock, etc.) ── */
 if (isset($_POST['submit'])) {
     $title       = trim($_POST['title']);
     $description = trim($_POST['description']);
@@ -105,6 +104,8 @@ if (isset($_POST['submit'])) {
     $sizes       = isset($_POST['sizes']) ? implode(",", $_POST['sizes']) : "";
     $is_top      = isset($_POST['is_top']) ? 1 : 0;
     $shop_id     = !empty($_POST['shop_id']) ? (int)$_POST['shop_id'] : null;
+    $stock       = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
+    $rating      = isset($_POST['rating']) ? floatval($_POST['rating']) : 0;
 
     $imagePath = $editData['image'] ?? "";
     if (!empty($_FILES['image']['name'])) {
@@ -127,13 +128,13 @@ if (isset($_POST['submit'])) {
 
     if (!empty($_POST['id'])) { // UPDATE
         $id = (int)$_POST['id'];
-        $stmt = $conn->prepare("UPDATE jerseys SET title=?, description=?, image=?, images=?, price=?, discount=?, jersey_type=?, sport_type=?, sizes=?, sell=?, is_top=?, shop_id=? WHERE id=? AND seller_id=?");
-        $stmt->bind_param("ssssddssssiiii", $title,$description,$imagePath,$extraImagesStr,$price,$discount,$type,$sport_type,$sizes,$sell,$is_top,$shop_id,$id,$seller_id);
+        $stmt = $conn->prepare("UPDATE jerseys SET title=?, description=?, image=?, images=?, price=?, discount=?, jersey_type=?, sport_type=?, sizes=?, sell=?, is_top=?, stock=?, rating=?, shop_id=? WHERE id=? AND seller_id=?");
+        $stmt->bind_param("ssssddssssiiiisi", $title,$description,$imagePath,$extraImagesStr,$price,$discount,$type,$sport_type,$sizes,$sell,$is_top,$stock,$rating,$shop_id,$id,$seller_id);
         $stmt->execute(); $stmt->close();
         header("Location: add_jersey.php?success=updated"); exit;
     } else { // INSERT
-        $stmt = $conn->prepare("INSERT INTO jerseys (title, description, image, images, price, discount, jersey_type, sport_type, sizes, sell, is_top, seller_id, shop_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param("ssssddssssiii", $title,$description,$imagePath,$extraImagesStr,$price,$discount,$type,$sport_type,$sizes,$sell,$is_top,$seller_id,$shop_id);
+        $stmt = $conn->prepare("INSERT INTO jerseys (title, description, image, images, price, discount, jersey_type, sport_type, sizes, sell, is_top, stock, rating, seller_id, shop_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        $stmt->bind_param("ssssddssssiiisii", $title,$description,$imagePath,$extraImagesStr,$price,$discount,$type,$sport_type,$sizes,$sell,$is_top,$stock,$rating,$seller_id,$shop_id);
         $stmt->execute(); $stmt->close();
         header("Location: add_jersey.php?success=added"); exit;
     }
@@ -158,6 +159,20 @@ $total_sell = $stmt->get_result()->fetch_assoc()['cnt'] ?? 0; $stmt->close();
 $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM jerseys WHERE seller_id = ? AND is_top=1");
 $stmt->bind_param("i", $seller_id); $stmt->execute();
 $total_top = $stmt->get_result()->fetch_assoc()['cnt'] ?? 0; $stmt->close();
+
+$stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM jerseys WHERE seller_id = ? AND sell='Yes' AND stock <= 5 AND stock > 0");
+$stmt->bind_param("i", $seller_id); $stmt->execute();
+$low_stock_count = $stmt->get_result()->fetch_assoc()['cnt'] ?? 0; $stmt->close();
+
+$stmt = $conn->prepare("SELECT SUM(stock) as total FROM jerseys WHERE seller_id = ? AND sell='Yes'");
+$stmt->bind_param("i", $seller_id); $stmt->execute();
+$total_stock = $stmt->get_result()->fetch_assoc()['total'] ?? 0; $stmt->close();
+
+// Average rating for seller (optional, not used but could be)
+$stmt = $conn->prepare("SELECT AVG(rating) as avg_rating FROM jerseys WHERE seller_id = ? AND rating > 0");
+$stmt->bind_param("i", $seller_id); $stmt->execute();
+$avg_rating = $stmt->get_result()->fetch_assoc()['avg_rating'] ?? 0;
+$stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -182,6 +197,9 @@ $total_top = $stmt->get_result()->fetch_assoc()['cnt'] ?? 0; $stmt->close();
     --green-bg:   #edfaf3;
     --amber:      #b86a00;
     --amber-bg:   #fff7e6;
+    --red:        #dc2626;
+    --red-bg:     #fef2f2;
+    --star:       #fbbf24;
     --sidebar-w:  245px;
     --top-h:      64px;
 }
@@ -197,7 +215,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 .mini-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 12px;
     margin-bottom: 24px;
 }
@@ -219,6 +237,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .ms-brand::before { background: var(--brand); }
 .ms-green::before { background: var(--green); }
 .ms-amber::before { background: var(--amber); }
+.ms-red::before { background: var(--red); }
 .ms-icon {
     position: absolute;
     top: 12px; right: 14px;
@@ -345,7 +364,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     gap: 8px;
 }
 
-/* Shop group with inline add button */
 .shop-group {
     display: flex;
     gap: 6px;
@@ -381,7 +399,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
+    width: 44px;
     height: 38px;
     border: 1.5px solid var(--border);
     border-radius: 8px;
@@ -588,7 +606,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 600px;
+    min-width: 800px;
 }
 thead th {
     background: #f7f9fb;
@@ -635,6 +653,16 @@ td {
     color: var(--muted);
     margin-top: 1px;
 }
+.rating-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--star);
+    font-size: 12px;
+}
+.rating-stars i {
+    margin-right: 1px;
+}
 .badge {
     display: inline-flex;
     align-items: center;
@@ -672,6 +700,28 @@ td {
     color: #1a6bb5;
 }
 .b-sport::before { background: #3b82f6; }
+.stock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.stock-normal {
+    background: #e6f7e6;
+    color: #2e7d32;
+}
+.stock-low {
+    background: var(--red-bg);
+    color: var(--red);
+}
+.stock-out {
+    background: #f1f5f9;
+    color: #64748b;
+}
 .shop-badge {
     background: #f0f0fc;
     color: #4c51bf;
@@ -730,7 +780,6 @@ td {
     font-size: 14px;
 }
 
-/* Modal for adding shop */
 .modal {
     display: none;
     position: fixed;
@@ -853,7 +902,17 @@ td {
             <div class="ms-val"><?= $total_top ?></div>
             <div class="ms-lbl">Featured</div>
         </div>
+        <div class="mini-stat ms-red">
+            <div class="ms-icon">📦</div>
+            <div class="ms-val"><?= $total_stock ?></div>
+            <div class="ms-lbl">Total Stock</div>
+        </div>
     </div>
+    <?php if ($low_stock_count > 0): ?>
+    <div class="toast" style="background: var(--red-bg); border-color: #fecaca; color: var(--red);">
+        ⚠️ <?= $low_stock_count ?> jersey(s) have low stock (≤5 units). Consider restocking!
+    </div>
+    <?php endif; ?>
 
     <div class="page-grid">
 
@@ -864,7 +923,6 @@ td {
                     <span style="font-size:20px;"><?= $editData ? '✏️' : '➕' ?></span>
                     <h2><?= $editData ? 'Edit Jersey' : 'Add New Jersey' ?></h2>
                 </div>
-                <!-- 👇 Store name displayed here -->
                 <div class="shop-badge">
                     🏪 Store: <?= htmlspecialchars($shop_name) ?>
                 </div>
@@ -943,12 +1001,25 @@ td {
                         </div>
                     </div>
 
+                    <div class="two-col">
+                        <div class="form-group">
+                            <label>Stock Quantity *</label>
+                            <input type="number" name="stock" min="0" value="<?= $editData['stock'] ?? 0 ?>" required>
+                            <small style="font-size: 10px; color: var(--muted);">Current available units</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Rating (0–5)</label>
+                            <input type="number" name="rating" step="0.1" min="0" max="5" value="<?= $editData['rating'] ?? 0 ?>">
+                            <small style="font-size: 10px; color: var(--muted);">Average customer rating</small>
+                        </div>
+                    </div>
+
                     <div class="form-group">
-                        <label>Sizes</label>
+                        <label>Sizes (select all that apply)</label>
                         <div class="size-row">
                             <?php
                             $selSizes = isset($editData['sizes']) ? explode(",", $editData['sizes']) : [];
-                            foreach (['S','M','L','XL'] as $sz):
+                            foreach (['S','M','L','XL','XXL'] as $sz):
                                 $chk = in_array($sz, $selSizes) ? 'checked' : '';
                             ?>
                             <span class="size-chip">
@@ -1020,6 +1091,8 @@ td {
                             <th>Sport</th>
                             <th>Shop</th>
                             <th>Price</th>
+                            <th>Stock</th>
+                            <th>Rating</th>
                             <th>Status</th>
                             <th>Top</th>
                             <th>Actions</th>
@@ -1031,9 +1104,22 @@ td {
                             $disc_price = $row['discount'] > 0
                                 ? $row['price'] - ($row['price'] * $row['discount'] / 100)
                                 : null;
+                            $stockClass = 'stock-normal';
+                            $stockText = $row['stock'] . ' units';
+                            if ($row['stock'] <= 0) {
+                                $stockClass = 'stock-out';
+                                $stockText = 'Out of Stock';
+                            } elseif ($row['stock'] <= 5) {
+                                $stockClass = 'stock-low';
+                                $stockText = $row['stock'] . ' left!';
+                            }
+                            $rating = floatval($row['rating'] ?? 0);
+                            $fullStars = floor($rating);
+                            $halfStar = ($rating - $fullStars) >= 0.5 ? 1 : 0;
+                            $emptyStars = 5 - $fullStars - $halfStar;
                     ?>
                     <tr data-search="<?= strtolower(htmlspecialchars($row['title'].' '.($row['sport_type']??'').' '.($row['shop_name']??''))) ?>">
-                        <tr>
+                        <td>
                             <div class="jersey-cell">
                                 <?php if (!empty($row['image'])): ?>
                                 <img class="jersey-thumb" src="<?= htmlspecialchars($row['image']) ?>" alt="">
@@ -1065,31 +1151,46 @@ td {
                             <?php if ($disc_price): ?>
                             <div class="disc-col">रु <?= number_format($row['price'], 2) ?></div>
                             <?php endif; ?>
-                          </td>
+                         </td>
+                        <td>
+                            <span class="stock-badge <?= $stockClass ?>">📦 <?= $stockText ?></span>
+                         </td>
+                        <td>
+                            <?php if ($rating > 0): ?>
+                            <div class="rating-stars">
+                                <?php for ($i = 0; $i < $fullStars; $i++) echo '★'; ?>
+                                <?php if ($halfStar) echo '½'; ?>
+                                <?php for ($i = 0; $i < $emptyStars; $i++) echo '☆'; ?>
+                                <span style="margin-left: 4px; color: var(--text); font-size: 11px;">(<?= number_format($rating, 1) ?>)</span>
+                            </div>
+                            <?php else: ?>
+                            <span style="color:var(--muted); font-size:11px;">—</span>
+                            <?php endif; ?>
+                         </td>
                         <td>
                             <?php if ($row['sell'] === 'Yes'): ?>
                             <span class="badge b-sell">For Sale</span>
                             <?php else: ?>
                             <span class="badge b-nosell">Hidden</span>
                             <?php endif; ?>
-                          </td>
+                         </td>
                         <td>
                             <?= $row['is_top'] == 1
                                 ? '<span class="badge b-top">⭐ Top</span>'
                                 : '<span style="color:var(--muted);font-size:12px;">—</span>'; ?>
-                          </td>
+                         </td>
                         <td>
                             <div class="row-actions">
                                 <a href="?edit=<?= $row['id'] ?>" class="btn-row btn-edit">✏️ Edit</a>
                                 <a href="?delete=<?= $row['id'] ?>" class="btn-row btn-delete"
                                    onclick="return confirm('Delete this jersey?')">🗑 Del</a>
                             </div>
-                          </td>
+                         </td>
                     </tr>
                     <?php endwhile;
                     else: ?>
                     <tr class="empty-row">
-                        <td colspan="7">
+                        <td colspan="9">
                             <div style="font-size:32px;margin-bottom:8px;">👕</div>
                             No jerseys yet. Use the form to add your first one!
                         </td>
@@ -1143,7 +1244,6 @@ function openShopModal() {
 function closeShopModal() {
     modal.classList.remove('show');
 }
-// Optional: close when clicking outside modal content
 modal.addEventListener('click', function(e) {
     if (e.target === modal) closeShopModal();
 });

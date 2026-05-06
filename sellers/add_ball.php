@@ -3,6 +3,10 @@ ob_start();
 session_start();
 require_once "../databases/db.php";
 
+// Optional: increase upload limits
+ini_set('upload_max_filesize', '10M');
+ini_set('post_max_size', '10M');
+
 $conn = getDB();
 if (!$conn) die("Database connection failed.");
 
@@ -13,7 +17,7 @@ if (!isset($_SESSION['seller_id'])) {
 }
 $seller_id = (int)$_SESSION['seller_id'];
 
-/* ── CREATE TABLE IF NOT EXISTS (with seller_id, shop_id) ── */
+/* ── CREATE TABLE IF NOT EXISTS (with seller_id, shop_id, stock) ── */
 $conn->query("CREATE TABLE IF NOT EXISTS sport_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     seller_id INT NOT NULL,
@@ -22,6 +26,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS sport_items (
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
     discount INT DEFAULT 0,
+    stock INT NOT NULL DEFAULT 0,
     sport_type VARCHAR(50) NOT NULL,
     item_type VARCHAR(50),
     rating FLOAT DEFAULT 0,
@@ -71,15 +76,27 @@ while ($row = $shops_result->fetch_assoc()) {
 }
 $stmt->close();
 
-/* ── IMAGE UPLOAD HELPER ── */
+/* ── IMPROVED IMAGE UPLOAD HELPER (with error checks) ── */
 function uploadSportImage($file, $prefix) {
     if (empty($file['name'])) return '';
+    
+    // Check PHP upload error
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return '';
+    }
+    
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
     if (!in_array($ext, $allowed)) return '';
     
     $uploadDir = "../uploads/sport_items/";
-    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+    // Ensure writable
+    if (!is_writable($uploadDir)) {
+        chmod($uploadDir, 0777);
+    }
     
     $name = $prefix . '_' . time() . '_' . rand(100, 999) . '.' . $ext;
     $dest = $uploadDir . $name;
@@ -124,12 +141,13 @@ if (isset($_GET['edit'])) {
     $stmt->close();
 }
 
-/* ── HANDLE ADD / UPDATE ── */
+/* ── HANDLE ADD / UPDATE (with stock and validation) ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit'])) {
     $title       = $conn->real_escape_string(trim($_POST['title']));
     $desc        = $conn->real_escape_string(trim($_POST['description']));
     $price       = floatval($_POST['price']);
     $discount    = intval($_POST['discount']);
+    $stock       = isset($_POST['stock']) ? intval($_POST['stock']) : 0;
     $sport_type  = $conn->real_escape_string($_POST['sport_type']);
     $item_type   = $conn->real_escape_string($_POST['item_type']);
     $rating      = floatval($_POST['rating']);
@@ -144,22 +162,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit'])) {
     $img3 = uploadSportImage($_FILES['image3'], 'item3');
     $img4 = uploadSportImage($_FILES['image4'], 'item4');
 
+    $uploadErrors = [];
+
     if (isset($_POST['item_id']) && $_POST['item_id'] != '') {
-        // UPDATE mode
+        // UPDATE mode – keep old images if no new upload
         $iid = intval($_POST['item_id']);
-        // Keep old images if no new upload
         if (!$img1) $img1 = $conn->real_escape_string($_POST['old_img1'] ?? '');
         if (!$img2) $img2 = $conn->real_escape_string($_POST['old_img2'] ?? '');
         if (!$img3) $img3 = $conn->real_escape_string($_POST['old_img3'] ?? '');
         if (!$img4) $img4 = $conn->real_escape_string($_POST['old_img4'] ?? '');
 
         $stmt = $conn->prepare("UPDATE sport_items SET 
-            title=?, description=?, price=?, discount=?, sport_type=?, item_type=?, 
+            title=?, description=?, price=?, discount=?, stock=?, sport_type=?, item_type=?, 
             rating=?, is_top=?, is_new=?, sell=?, shop_id=?,
             image=?, image2=?, image3=?, image4=?
             WHERE id=? AND seller_id=?");
-        $stmt->bind_param("ssdissiissssssii", 
-            $title, $desc, $price, $discount, $sport_type, $item_type,
+        $stmt->bind_param("ssdiiisssiissssii", 
+            $title, $desc, $price, $discount, $stock, $sport_type, $item_type,
             $rating, $is_top, $is_new, $sell, $shop_id,
             $img1, $img2, $img3, $img4, $iid, $seller_id);
         $stmt->execute();
@@ -167,16 +186,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit'])) {
         header("Location: add_ball.php?msg=updated");
         exit;
     } else {
-        // INSERT mode
-        if (!$img1) {
-            header("Location: add_ball.php?msg=noimg");
+        // INSERT mode – main image is required
+        if (empty($_FILES['image']['name'])) {
+            $uploadErrors[] = "Main image is required.";
+        } elseif ($img1 === '') {
+            $uploadErrors[] = "Main image upload failed. Use JPG, PNG, WEBP or GIF (max ~10MB).";
+        }
+
+        if (!empty($uploadErrors)) {
+            header("Location: add_ball.php?msg=upload_failed");
             exit;
         }
+
         $stmt = $conn->prepare("INSERT INTO sport_items 
-            (seller_id, shop_id, title, description, price, discount, sport_type, item_type, rating, is_top, is_new, sell, image, image2, image3, image4)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("iissdissiissssss", 
-            $seller_id, $shop_id, $title, $desc, $price, $discount, $sport_type, $item_type,
+            (seller_id, shop_id, title, description, price, discount, stock, sport_type, item_type, rating, is_top, is_new, sell, image, image2, image3, image4)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iissdiiissiisssss", 
+            $seller_id, $shop_id, $title, $desc, $price, $discount, $stock, $sport_type, $item_type,
             $rating, $is_top, $is_new, $sell, $img1, $img2, $img3, $img4);
         $stmt->execute();
         $stmt->close();
@@ -197,6 +223,23 @@ $items->bind_param("i", $seller_id);
 $items->execute();
 $items = $items->get_result();
 
+/* ── STATS ── */
+$stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM sport_items WHERE seller_id = ?");
+$stmt->bind_param("i", $seller_id); $stmt->execute();
+$total_items = $stmt->get_result()->fetch_assoc()['cnt'] ?? 0; $stmt->close();
+
+$stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM sport_items WHERE seller_id = ? AND sell='Yes'");
+$stmt->bind_param("i", $seller_id); $stmt->execute();
+$total_trending = $stmt->get_result()->fetch_assoc()['cnt'] ?? 0; $stmt->close();
+
+$stmt = $conn->prepare("SELECT SUM(stock) as total_stock FROM sport_items WHERE seller_id = ? AND sell='Yes'");
+$stmt->bind_param("i", $seller_id); $stmt->execute();
+$total_stock = $stmt->get_result()->fetch_assoc()['total_stock'] ?? 0; $stmt->close();
+
+$stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM sport_items WHERE seller_id = ? AND sell='Yes' AND stock <= 5 AND stock > 0");
+$stmt->bind_param("i", $seller_id); $stmt->execute();
+$low_stock_count = $stmt->get_result()->fetch_assoc()['cnt'] ?? 0; $stmt->close();
+
 $msg = $_GET['msg'] ?? '';
 
 $sports = ['Football','Cricket Balls','Tennis','Basketball','Volleyball','Badminton','Boxing','Cycling','Rugby','Gym','Swimming','Other'];
@@ -215,6 +258,10 @@ $types  = ['Standard','Pro','Training','Match','Size 3','Size 4','Size 5','Junio
         .main-content{margin-left:260px;padding:20px;}
         .container{max-width:1300px;margin:25px auto;background:#fff;border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,0.08);padding:35px;}
         h2{font-size:24px;font-weight:700;color:#0f172a;margin-bottom:30px;text-align:center;}
+        .stats-grid{display:flex;flex-wrap:wrap;gap:15px;margin-bottom:30px;}
+        .stat-card{background:#f8fafc;border-radius:16px;padding:15px 20px;flex:1;min-width:140px;border:1px solid #e2e8f0;}
+        .stat-card .val{font-size:28px;font-weight:800;color:#0f172a;}
+        .stat-card .lbl{font-size:12px;color:#475569;margin-top:4px;}
         .toast{padding:14px 24px;border-radius:10px;font-weight:600;margin-bottom:25px;display:flex;align-items:center;gap:10px;}
         .toast.ok{background:#dcfce7;color:#166534;}
         .toast.del{background:#fee2e2;color:#b91c1c;}
@@ -242,6 +289,10 @@ $types  = ['Standard','Pro','Training','Match','Size 3','Size 4','Size 5','Junio
         th{background:#f8fafc;font-weight:600;color:#475569;text-transform:uppercase;font-size:12px;}
         tr:hover{background:#f8fafc;}
         .td-imgs img{width:45px;height:45px;object-fit:cover;border-radius:6px;margin-right:5px;}
+        .stock-badge{display:inline-block;padding:4px 10px;border-radius:30px;font-size:11px;font-weight:600;}
+        .stock-normal{background:#dcfce7;color:#166534;}
+        .stock-low{background:#fee2e2;color:#b91c1c;}
+        .stock-out{background:#f1f5f9;color:#64748b;}
         .btn-ed,.btn-dl{padding:5px 12px;border-radius:30px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin:2px;}
         .btn-ed{background:#e0f2fe;color:#0369a1;}
         .btn-dl{background:#fee2e2;color:#b91c1c;}
@@ -276,12 +327,21 @@ $types  = ['Standard','Pro','Training','Match','Size 3','Size 4','Size 5','Junio
             <?php echo $edit ? 'Edit Sport Item' : 'Add New Sport Item'; ?>
         </h2>
 
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card"><div class="val"><?= $total_items ?></div><div class="lbl">Total Items</div></div>
+            <div class="stat-card"><div class="val"><?= $total_trending ?></div><div class="lbl">Trending</div></div>
+            <div class="stat-card"><div class="val"><?= $total_stock ?></div><div class="lbl">Total Stock</div></div>
+            <div class="stat-card"><div class="val" style="color:#b91c1c;"><?= $low_stock_count ?></div><div class="lbl">Low Stock (≤5)</div></div>
+        </div>
+
         <?php
         if($msg==='added')   echo '<div class="toast ok"><i class="fa fa-check-circle"></i> Item added successfully!</div>';
         if($msg==='updated') echo '<div class="toast ok"><i class="fa fa-check-circle"></i> Item updated successfully!</div>';
         if($msg==='deleted') echo '<div class="toast del"><i class="fa fa-trash"></i> Item deleted.</div>';
-        if($msg==='noimg')   echo '<div class="toast warn"><i class="fa fa-image"></i> Main image is required!</div>';
+        if($msg==='upload_failed') echo '<div class="toast warn"><i class="fa fa-exclamation-triangle"></i> Main image is required or upload failed. Please select a valid image (JPG, PNG, WEBP, GIF) and try again.</div>';
         if(isset($_GET['shop_added'])) echo '<div class="toast ok"><i class="fa fa-store"></i> New shop created!</div>';
+        if($low_stock_count > 0) echo '<div class="toast warn"><i class="fa fa-exclamation-circle"></i> ' . $low_stock_count . ' item(s) have low stock (≤5 units). Consider restocking!</div>';
         ?>
 
         <form method="POST" enctype="multipart/form-data">
@@ -330,6 +390,12 @@ $types  = ['Standard','Pro','Training','Match','Size 3','Size 4','Size 5','Junio
                 <div class="form-group">
                     <label>Discount (%)</label>
                     <input type="number" name="discount" min="0" max="100" value="<?php echo $edit['discount']??0;?>">
+                </div>
+
+                <div class="form-group">
+                    <label>Stock Quantity *</label>
+                    <input type="number" name="stock" min="0" value="<?php echo $edit['stock']??0;?>" required>
+                    <small style="font-size:11px; color:#64748b;">Current available units</small>
                 </div>
 
                 <div class="form-group">
@@ -427,6 +493,7 @@ $types  = ['Standard','Pro','Training','Match','Size 3','Size 4','Size 5','Junio
                         <th>Type</th>
                         <th>Shop</th>
                         <th>Price</th>
+                        <th>Stock</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -436,13 +503,22 @@ $types  = ['Standard','Pro','Training','Match','Size 3','Size 4','Size 5','Junio
                 if($items->num_rows > 0):
                     while($row = $items->fetch_assoc()):
                         $final_price = $row['discount'] > 0 ? round($row['price'] * (1 - $row['discount']/100)) : $row['price'];
+                        $stock_class = 'stock-normal';
+                        $stock_text = $row['stock'] . ' units';
+                        if ($row['stock'] <= 0) {
+                            $stock_class = 'stock-out';
+                            $stock_text = 'Out of Stock';
+                        } elseif ($row['stock'] <= 5) {
+                            $stock_class = 'stock-low';
+                            $stock_text = $row['stock'] . ' left!';
+                        }
                 ?>
                     <tr>
                         <td><?php echo $sn++; ?></td>
                         <td class="td-imgs">
                             <img src="<?php echo htmlspecialchars($row['image']); ?>" onerror="this.src='https://placehold.co/60x60?text=No+Image'">
                             <?php if(!empty($row['image2'])) echo '<img src="'.htmlspecialchars($row['image2']).'" alt="">'; ?>
-                        </td>
+                         </td>
                         <td><strong><?php echo htmlspecialchars($row['title']); ?></strong></td>
                         <td><?php echo htmlspecialchars($row['sport_type']); ?></td>
                         <td><?php echo htmlspecialchars($row['item_type']); ?></td>
@@ -450,10 +526,11 @@ $types  = ['Standard','Pro','Training','Match','Size 3','Size 4','Size 5','Junio
                             <?php if(!empty($row['shop_name'])): ?>
                                 <span class="shop-badge-sm">🏪 <?php echo htmlspecialchars($row['shop_name']); ?></span>
                             <?php else: ?>
-                                <span style="color:var(--muted);">—</span>
+                                <span style="color:#94a3b8;">—</span>
                             <?php endif; ?>
                          </td>
                         <td><strong>Rs. <?php echo number_format($final_price); ?></strong></td>
+                        <td><span class="stock-badge <?= $stock_class ?>">📦 <?= $stock_text ?></span></td>
                         <td>
                             <a href="?edit=<?php echo $row['id']; ?>" class="btn-ed">Edit</a>
                             <a href="?delete=<?php echo $row['id']; ?>" class="btn-dl" 
@@ -461,10 +538,10 @@ $types  = ['Standard','Pro','Training','Match','Size 3','Size 4','Size 5','Junio
                          </td>
                     </tr>
                 <?php endwhile; else: ?>
-                    <tr class="empty-row"><td colspan="8" style="text-align:center;padding:40px;">No items yet. Add your first sport item above.</td></tr>
+                    <tr class="empty-row"><td colspan="9" style="text-align:center;padding:40px;">No items yet. Add your first sport item above.</td></tr>
                 <?php endif; ?>
                 </tbody>
-                </table>
+            划词
             </div>
         </div>
     </div>

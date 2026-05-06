@@ -38,6 +38,7 @@ if (count($name_parts) > 1) $initials .= strtoupper(substr(end($name_parts), 0, 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seller Dashboard | SportsBazaar</title>
+<link rel="shortcut icon" href="/../cropped_circle_image.png" type="image/x-icon">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
@@ -480,7 +481,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
             <a href="../sellers/add_gymitem.php" class="nav-item">
                 <span class="nav-icon">💪</span> Gym & Fitness Item
             </a>
-
+            <a href="../sellers/add_batminton.php" class="nav-item">
+                <span class="nav-icon">🏸</span> Add Badminton Item
+            </a>
+               <a href="../sellers/add_boxing.php" class="nav-item">
+                <span class="nav-icon">🥊</span> Add Boxing Item
+            </a>
             <div class="nav-label">Sales</div>
             <a href="seller_order.php" class="nav-item">
                 <span class="nav-icon">🛒</span> Customer Orders
